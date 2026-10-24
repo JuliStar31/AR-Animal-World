@@ -426,6 +426,7 @@ namespace ARAnimalWorld.EditorTools
             var info = Raised("InfoPanel", c, Cream, darkLip, 10f, 44f, out var infoContainer);
             Put(infoContainer, Edge.Bottom, 32f, 1365f, 716f, 285f);
             infoContainer.gameObject.AddComponent<PopInEffect>();
+            screen.infoPanel = infoContainer.gameObject;
             screen.infoButton = MakeButton(infoContainer.gameObject, info);
             screen.nameText = Text("Name", info.transform, "Singa", 60f, Brown, true, TextAlignmentOptions.Left);
             Local(screen.nameText.rectTransform, 40f, 30f, 460f, 80f);

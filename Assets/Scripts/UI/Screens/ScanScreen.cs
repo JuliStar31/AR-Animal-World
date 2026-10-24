@@ -96,6 +96,11 @@ namespace ARAnimalWorld
 
         protected override void OnShow()
         {
+            // Switch AR on first, so a UI problem can never keep the
+            // animals from appearing on their cards.
+            IsScanning = true;
+            ScanningChanged?.Invoke(true);
+
             if (Game.appManager.IsAnimalInView)
             {
                 HandleDetected(Game.appManager.SelectedAnimal);
@@ -106,8 +111,6 @@ namespace ARAnimalWorld
             }
 
             ApplyCameraState();
-            IsScanning = true;
-            ScanningChanged?.Invoke(true);
         }
 
         protected override void OnHide()
@@ -143,11 +146,19 @@ namespace ARAnimalWorld
 
         private void ShowSearching()
         {
-            guidePanel.SetActive(true);
-            scanFrame.SetActive(true);
-            cardHint.SetActive(true);
-            foundBadge.SetActive(false);
-            infoPanel.SetActive(false);
+            SetVisible(guidePanel, true);
+            SetVisible(scanFrame, true);
+            SetVisible(cardHint, true);
+            SetVisible(foundBadge, false);
+            SetVisible(infoPanel, false);
+        }
+
+        private static void SetVisible(GameObject part, bool visible)
+        {
+            if (part != null)
+            {
+                part.SetActive(visible);
+            }
         }
 
         private void HandleDetected(AnimalData animal)
@@ -157,17 +168,17 @@ namespace ARAnimalWorld
                 return;
             }
 
-            guidePanel.SetActive(false);
-            scanFrame.SetActive(false);
-            cardHint.SetActive(false);
-            foundBadge.SetActive(true);
+            SetVisible(guidePanel, false);
+            SetVisible(scanFrame, false);
+            SetVisible(cardHint, false);
+            SetVisible(foundBadge, true);
             if (foundText != null)
             {
                 foundText.text = Game.appManager.IsFromPicture ? "Hewan ketemu!" : "Kartu ketemu!";
             }
             nameText.text = animal.displayName;
             factText.text = animal.fact;
-            infoPanel.SetActive(true);
+            SetVisible(infoPanel, true);
         }
 
         private void HandleLost(AnimalData animal)
