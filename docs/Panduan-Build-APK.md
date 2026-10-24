@@ -124,6 +124,9 @@ Model 3D gratis yang ramah anak bisa dicari di Unity Asset Store, Sketchfab (lis
 | Hewan di atas kartu terlalu besar atau kecil | Ubah **Model Scale** di komponen `AnimalImageTargetHandler` pada Image Target |
 | Hewan berwarna pink | Proyek memakai URP tapi materialnya tidak cocok. Pakai Built-in Render Pipeline, atau ganti shader model ke URP/Lit |
 | Kamera tidak menyala di layar Scan | Matikan centang **Camera Only On Scan Screen** di komponen `ARCameraToggle` pada AR Camera |
+| Build gagal dengan error Gradle soal `android.useAndroidX` | Hapus paket **In-App Purchasing** (`com.unity.purchasing`) lewat Window > Package Manager. Paket bawaan template Unity 6 ini bentrok dengan Vuforia |
+| Build ditolak karena Minimum API Level | Vuforia 11 butuh minimal Android 10 (API 29). Atur di Player Settings |
+| Kamera AR tidak menyala walau license key benar | Setujui Vuforia Developer Agreement lewat **Help > Vuforia Engine > Show Developer Agreement** |
 | Ingin menghapus bintang saat testing | Menu **AR Animal World > Hapus Bintang Tersimpan** |
 
 ## Struktur script
