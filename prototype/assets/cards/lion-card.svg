@@ -1,0 +1,8 @@
+<svg width="220" height="300" viewBox="0 0 220 300" xmlns="http://www.w3.org/2000/svg">
+  <rect x="20" y="30" width="180" height="240" rx="32" fill="#FFF8E7"/>
+  <rect x="40" y="55" width="140" height="160" rx="28" fill="#FFE08A"/>
+  <circle cx="88" cy="124" r="38" fill="#E0802A"/>
+  <circle cx="132" cy="124" r="38" fill="#E0802A"/>
+  <rect x="92" y="112" width="36" height="24" rx="12" fill="#FFF3DA"/>
+  <text x="110" y="192" text-anchor="middle" font-family="Fredoka, sans-serif" font-size="30" fill="#3B2A14">Singa</text>
+</svg>
