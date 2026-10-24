@@ -4,22 +4,17 @@ using UnityEngine.UI;
 
 namespace ARAnimalWorld
 {
-    // Screen 6: "Kamu Hebat!" with the stars from this round. Every child
-    // gets an encouraging message, whatever the score.
+    // Screen 6: "Kamu Hebat!" with up to three stars for this round. Every
+    // child gets an encouraging message, whatever the score.
     public class ResultsScreen : UIScreen
     {
         public override ScreenId Id => ScreenId.Results;
 
-        public TMP_Text titleText;
+        public Image[] stars = new Image[3];
+        public TMP_Text headlineText;
         public TMP_Text messageText;
-        public TMP_Text totalStarsText;
-        public Image[] stars = new Image[0];
         public Button playAgainButton;
         public Button homeButton;
-
-        public float starSpacing = 250f;
-        public Color starOn = new Color(1f, 0.85f, 0.36f);
-        public Color starOff = new Color(0.91f, 0.93f, 0.96f);
 
         protected override void OnInitialize()
         {
@@ -40,12 +35,11 @@ namespace ARAnimalWorld
             var session = Game.quizManager.Session;
             int earned = session != null ? session.StarsEarned : 0;
             int total = session != null ? session.QuestionCount : stars.Length;
+            int lit = StarsToLight(earned, total, stars.Length);
 
             for (int i = 0; i < stars.Length; i++)
             {
-                stars[i].gameObject.SetActive(i < total);
-                CenterInRow(stars[i].rectTransform, i, Mathf.Min(total, stars.Length), starSpacing);
-                stars[i].color = i < earned ? starOn : starOff;
+                stars[i].sprite = i < lit ? Game.art.starOn : Game.art.starOff;
 
                 var pop = stars[i].GetComponent<PopInEffect>();
                 if (pop != null)
@@ -55,29 +49,30 @@ namespace ARAnimalWorld
                 }
             }
 
-            titleText.text = "Kamu Hebat!";
+            headlineText.text = $"{earned} Bintang!";
             messageText.text = MessageFor(earned, total);
-            totalStarsText.text = $"Total bintangmu: {Game.appManager.starsCollected}";
             Game.gameAudio.PlayCorrect();
         }
 
-        // Spreads the visible items evenly around the centre.
-        public static void CenterInRow(RectTransform rect, int index, int count, float spacing)
+        // The screen always shows three stars; the score is spread over them.
+        public static int StarsToLight(int earned, int total, int shown)
         {
-            var position = rect.anchoredPosition;
-            position.x = (index - (count - 1) / 2f) * spacing;
-            rect.anchoredPosition = position;
+            if (total <= 0 || earned <= 0)
+            {
+                return 0;
+            }
+            return Mathf.Clamp(Mathf.RoundToInt(shown * (float)earned / total), 1, shown);
         }
 
         public static string MessageFor(int earned, int total)
         {
             if (earned >= total)
             {
-                return $"Kamu dapat {earned} bintang! Semua benar!";
+                return "Kamu pintar mengenal hewan. Ayo main lagi!";
             }
             if (earned > 0)
             {
-                return $"Kamu dapat {earned} bintang! Ayo main lagi!";
+                return "Hebat! Ayo main lagi supaya bintangnya makin banyak!";
             }
             return "Kamu sudah berusaha! Ayo main lagi!";
         }

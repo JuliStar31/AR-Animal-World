@@ -6,23 +6,13 @@ namespace ARAnimalWorld
     // Builds a friendly toy-like animal out of Unity primitives, so the
     // game works before real 3D models exist. The model is about 1 unit
     // tall, stands on y = 0 and faces -Z (towards the viewer).
-    // A real prefab in Resources/Models/{modelName} always wins over this.
+    // A real prefab in Resources/Models/{modelName} always wins over this
+    // (see AnimalImageTargetHandler).
     public static class PlaceholderAnimalFactory
     {
         private static readonly Color Black = new Color(0.15f, 0.15f, 0.18f);
         private static readonly Color Pink = new Color(1f, 0.6f, 0.68f);
         private static readonly Dictionary<Color, Material> Materials = new Dictionary<Color, Material>();
-
-        public static GameObject LoadOrCreate(AnimalData animal, Transform parent)
-        {
-            var prefab = Resources.Load<GameObject>("Models/" + animal.modelName);
-            GameObject model = prefab != null ? Object.Instantiate(prefab, parent, false) : Create(animal.id, parent);
-            if (model.GetComponent<AnimalIdleMotion>() == null)
-            {
-                model.AddComponent<AnimalIdleMotion>();
-            }
-            return model;
-        }
 
         public static GameObject Create(AnimalId id, Transform parent)
         {
