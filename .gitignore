@@ -436,3 +436,10 @@ Assets/Resources/Models.meta
 
 # Check photos written by AR Animal World > Siapkan Model Hewan 3D
 ModelPreviews/
+
+# TextMeshPro font assets made from Assets/Fonts by the scene builder
+Assets/Fonts/*SDF.asset
+Assets/Fonts/*SDF.asset.meta
+# Rounded shapes drawn by the scene builder
+Assets/Art/Generated/
+Assets/Art/Generated.meta

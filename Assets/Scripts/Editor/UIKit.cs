@@ -258,16 +258,27 @@ namespace ARAnimalWorld.EditorTools
         {
             if (twoLayers)
             {
-                Put(Dot("HillBack", screen, HillBack).rectTransform, Edge.Bottom, -360f, 1165f, 1500f, 1100f);
+                BehindContent(Put(Dot("HillBack", screen, HillBack).rectTransform, Edge.Bottom, -360f, 1165f, 1500f, 1100f));
             }
-            Put(Dot("HillFront", screen, HillFront).rectTransform, Edge.Bottom, -260f, 1228f, 1300f, 1000f);
+            BehindContent(Put(Dot("HillFront", screen, HillFront).rectTransform, Edge.Bottom, -260f, 1228f, 1300f, 1000f));
         }
 
         public static void Cloud(Transform parent, Sprite cloud, Edge edge, float x, float y, float w, float h)
         {
             var image = Picture("Cloud", parent, cloud, new Color(1f, 1f, 1f, 0.75f));
             image.preserveAspect = false;
-            Put(image.rectTransform, edge, x, y, w, h);
+            BehindContent(Put(image.rectTransform, edge, x, y, w, h));
+        }
+
+        // Screen decorations are added after the SafeArea content, which
+        // would draw them over the buttons; move them underneath it.
+        private static void BehindContent(RectTransform decoration)
+        {
+            var content = decoration.parent.Find("SafeArea");
+            if (content != null)
+            {
+                decoration.SetSiblingIndex(content.GetSiblingIndex());
+            }
         }
 
         // Rough text width for centring an icon next to a label.
