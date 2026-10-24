@@ -80,7 +80,12 @@ namespace ARAnimalWorld
 
             if (soundClip == null)
             {
-                soundClip = Resources.Load<AudioClip>("Audio/" + animal.soundClipName);
+                soundClip = GameAudio.LoadAnimalSound(animal);
+            }
+
+            if (narrationClip == null)
+            {
+                narrationClip = GameAudio.LoadNarration(animal);
             }
         }
 
@@ -151,17 +156,21 @@ namespace ARAnimalWorld
         {
             if (spawnedModel == null)
             {
-                if (modelPrefab == null)
-                {
-                    Debug.LogWarning($"No model prefab for {animal.displayName}. Expected Resources/Models/{animal.modelName}.");
-                    return;
-                }
-
                 // Parent to the target so the animal stays anchored to the card.
-                spawnedModel = Instantiate(modelPrefab, transform);
+                // Without a prefab, a simple placeholder animal is built instead.
+                spawnedModel = modelPrefab != null
+                    ? Instantiate(modelPrefab, transform)
+                    : PlaceholderAnimalFactory.Create(animalId, transform);
                 spawnedModel.transform.localPosition = modelLocalPosition;
                 spawnedModel.transform.localRotation = Quaternion.Euler(modelLocalEuler);
                 spawnedModel.transform.localScale = Vector3.one * modelScale;
+
+                var idle = spawnedModel.GetComponent<AnimalIdleMotion>();
+                if (idle == null)
+                {
+                    idle = spawnedModel.AddComponent<AnimalIdleMotion>();
+                }
+                idle.Scale = modelScale;
             }
 
             spawnedModel.SetActive(true);
