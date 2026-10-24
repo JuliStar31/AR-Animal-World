@@ -6,20 +6,25 @@ namespace ARAnimalWorld
 {
     public class ARAnimalWorldManager : MonoBehaviour
     {
+        private const string StarsPrefsKey = "araw_stars_total";
+
         public AnimalId selectedAnimalId;
         public int starsCollected;
-        public int quizStars;
-        public int currentQuestionIndex;
 
         public event Action<AnimalData> OnAnimalSelected;
         public event Action<int> OnStarsUpdated;
-        public event Action<int> OnQuizAnswered;
         public event Action<AnimalData> OnAnimalDetected;
         public event Action<AnimalData> OnAnimalLost;
 
         public bool IsAnimalInView { get; private set; }
 
         public AnimalData SelectedAnimal => AnimalCatalog.Animals.Find(a => a.id == selectedAnimalId);
+
+        private void Awake()
+        {
+            // Stars stay on the phone between sessions.
+            starsCollected = PlayerPrefs.GetInt(StarsPrefsKey, 0);
+        }
 
         public void SelectAnimal(AnimalId animalId)
         {
@@ -49,22 +54,8 @@ namespace ARAnimalWorld
         public void AddStars(int amount)
         {
             starsCollected += amount;
+            SaveStars();
             OnStarsUpdated?.Invoke(starsCollected);
-        }
-
-        public void SubmitQuizAnswer(int answerIndex)
-        {
-            var selectedAnimal = SelectedAnimal;
-            bool isCorrect = answerIndex == selectedAnimal.correctAnswerIndex;
-
-            if (isCorrect)
-            {
-                quizStars += 1;
-                AddStars(1);
-            }
-
-            OnQuizAnswered?.Invoke(isCorrect ? 1 : 0);
-            currentQuestionIndex += 1;
         }
 
         public AnimalData GetAnimalById(AnimalId animalId)
@@ -75,9 +66,14 @@ namespace ARAnimalWorld
         public void ResetProgress()
         {
             starsCollected = 0;
-            quizStars = 0;
-            currentQuestionIndex = 0;
+            SaveStars();
             OnStarsUpdated?.Invoke(starsCollected);
+        }
+
+        private void SaveStars()
+        {
+            PlayerPrefs.SetInt(StarsPrefsKey, starsCollected);
+            PlayerPrefs.Save();
         }
     }
 }

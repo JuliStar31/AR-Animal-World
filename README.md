@@ -82,12 +82,16 @@ AR-Animal-World/
 
 ## Quick start
 
-1. Open this repository in Unity as a project root
-2. Install Vuforia Engine
-3. Create image targets for lion, elephant, and rabbit cards
-4. Import 3D models or stylized placeholders for each animal
-5. Attach the starter scripts to UI and gameplay GameObjects
-6. Build for Android device
+Full step-by-step guide (Indonesian): [docs/Panduan-Build-APK.md](docs/Panduan-Build-APK.md)
+
+1. Open this repository in Unity 2022.3 LTS and import TMP Essential Resources
+2. Install Vuforia Engine and paste your license key in Vuforia Configuration
+3. Add an AR Camera and three Image Targets named Singa, Gajah, Kelinci
+4. Run **AR Animal World > Bangun Game di Scene Ini** to build all six screens and wire the cards
+5. Press Play (the Scan screen has test buttons that fake a detected card)
+6. Build for Android
+
+Placeholder 3D animals and synthesized sounds are generated automatically, so the game is playable before real models and audio exist. Drop real ones into `Assets/Resources/Models` and `Assets/Resources/Audio` to replace them.
 
 ## Next steps
 
