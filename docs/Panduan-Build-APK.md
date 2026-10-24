@@ -37,8 +37,8 @@ Belum ada model 3D atau suara asli? Tidak masalah. Game otomatis membuat hewan 3
 
 1. Buat akun gratis di https://developer.vuforia.com.
 2. Buka **Plan & Licenses > Generate Basic License**, beri nama "AR Animal World", lalu salin license key-nya.
-3. Download **Vuforia Engine for Unity** dari halaman Downloads, lalu klik dua kali file `.unitypackage` (atau seret ke Unity) dan klik **Import**. Unity akan meminta restart, ikuti saja.
-4. Buka **Window > Vuforia Configuration** dan tempel license key ke kolom **App License Key**.
+3. Di halaman **Downloads > SDK**, download **Add Vuforia Engine to a Unity Project**. Di Unity klik **Assets > Import Package > Custom Package...**, pilih file `.unitypackage` itu, lalu klik **Import**. Kalau Unity meminta update atau restart, ikuti saja.
+4. Buka **Window > Vuforia Configuration** (atau pilih AR Camera lalu klik **Open Vuforia Engine configuration** di Inspector) dan tempel license key ke kolom **App License Key**. Jangan commit license key ke repo publik.
 
 ## 4. Siapkan gambar kartu hewan
 
