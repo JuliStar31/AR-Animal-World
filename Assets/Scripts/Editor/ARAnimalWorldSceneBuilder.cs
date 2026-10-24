@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
+using Unity.InferenceEngine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -22,10 +23,12 @@ namespace ARAnimalWorld.EditorTools
         private const string ManagersName = "AR Animal World";
         private const string CanvasName = "AR Animal World UI";
         private const string OldPreviewName = "AR Animal World Preview";
+        private const string PictureModelPath = "Assets/AI/mobilenetv2-12.onnx";
 
         private static Sprite chevronLeft, chevronRight, starOn, starOff, starOutline, play, camera,
             cameraOff, speaker, check, arrowUp, cloud, corner, happyLion;
         private static Sprite[] animals;
+        private static RawImage pictureDebugView;
 
         [MenuItem("AR Animal World/Bangun Game di Scene Ini", priority = 0)]
         public static void BuildGame()
@@ -64,6 +67,9 @@ namespace ARAnimalWorld.EditorTools
             router.screens = screens.ToArray();
             flow.router = router;
 
+            var recognizer = flow.GetComponent<AnimalPictureRecognizer>();
+            recognizer.debugView = pictureDebugView;
+
             int wired = WireVuforia(flow.appManager);
             int models = AnimalModelImporter.CountReadyModels();
 
@@ -77,8 +83,11 @@ namespace ARAnimalWorld.EditorTools
             string modelNote = models == AnimalCatalog.Animals.Count
                 ? "Semua hewan memakai model 3D asli."
                 : $"{models} dari {AnimalCatalog.Animals.Count} hewan memakai model 3D asli; sisanya model sederhana. Lihat menu AR Animal World > Siapkan Model Hewan 3D.";
+            string pictureNote = recognizer.model != null
+                ? "AI pengenal gambar hewan aktif."
+                : $"AI pengenal gambar hewan mati: {PictureModelPath} tidak ditemukan.";
             EditorUtility.DisplayDialog("AR Animal World siap",
-                "Semua layar sudah dibuat. Tekan Play untuk mencoba, lalu simpan scene (Ctrl+S).\n\n" + vuforiaNote + "\n\n" + modelNote,
+                "Semua layar sudah dibuat. Tekan Play untuk mencoba, lalu simpan scene (Ctrl+S).\n\n" + vuforiaNote + "\n\n" + modelNote + "\n\n" + pictureNote,
                 "Mantap");
         }
 
@@ -164,6 +173,10 @@ namespace ARAnimalWorld.EditorTools
             flow.quizManager = quiz;
             flow.gameAudio = audio;
             flow.art = art;
+
+            var recognizer = go.AddComponent<AnimalPictureRecognizer>();
+            recognizer.game = flow;
+            recognizer.model = AssetDatabase.LoadAssetAtPath<ModelAsset>(PictureModelPath);
             return flow;
         }
 
@@ -364,7 +377,7 @@ namespace ARAnimalWorld.EditorTools
             // 3a: guide bubble, scan frame, hint card.
             var guide = Raised("GuidePanel", c, Cream, darkLip, 8f, 50f, out var guideContainer);
             Put(guideContainer, Edge.Top, 184f, 48f, 548f, 145f);
-            Stretch(Text("Text", guide.transform, "Arahkan kamera ke kartu hewan!", 38f, Brown).rectTransform, 30f, 30f, 8f, 8f);
+            Stretch(Text("Text", guide.transform, "Arahkan kamera ke kartu atau gambar hewan!", 34f, Brown).rectTransform, 30f, 30f, 8f, 8f);
             screen.guidePanel = guideContainer.gameObject;
 
             var frame = Rect("ScanFrame", c);
@@ -405,7 +418,8 @@ namespace ARAnimalWorld.EditorTools
             Put(foundContainer, Edge.Top, 180f, 80f, 420f, 104f);
             var foundRow = found.transform;
             Local(Picture("Check", foundRow, check).rectTransform, 44f, 28f, 40f, 40f);
-            Local(Text("Text", foundRow, "Kartu ketemu!", 40f, White).rectTransform, 90f, 0f, 310f, 96f);
+            screen.foundText = Text("Text", foundRow, "Kartu ketemu!", 40f, White);
+            Local(screen.foundText.rectTransform, 90f, 0f, 310f, 96f);
             foundContainer.gameObject.AddComponent<PopInEffect>();
             screen.foundBadge = foundContainer.gameObject;
 
@@ -443,6 +457,13 @@ namespace ARAnimalWorld.EditorTools
             }
             screen.simulatePanel = simulate.gameObject;
             screen.simulateButtons = simButtons.ToArray();
+
+            // What the picture AI sees, under the test buttons.
+            var aiView = new GameObject("AiView", typeof(RectTransform)).AddComponent<RawImage>();
+            aiView.transform.SetParent(simulate.transform, false);
+            aiView.raycastTarget = false;
+            Local(aiView.rectTransform, 0f, 104f, 180f, 180f);
+            pictureDebugView = aiView;
 
             // 3c: camera off, covers everything else.
             var panel = Rect("CameraPanel", root);

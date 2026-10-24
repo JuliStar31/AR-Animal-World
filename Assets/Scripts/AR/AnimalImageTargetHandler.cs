@@ -78,11 +78,6 @@ namespace ARAnimalWorld
                 return;
             }
 
-            if (modelPrefab == null)
-            {
-                modelPrefab = Resources.Load<GameObject>("Models/" + animal.modelName);
-            }
-
             if (soundClip == null)
             {
                 soundClip = GameAudio.LoadAnimalSound(animal);
@@ -167,27 +162,10 @@ namespace ARAnimalWorld
         {
             if (spawnedModel == null)
             {
-                // Parent to the target so the animal stays anchored to the card.
-                // Without a prefab, a simple placeholder animal is built instead.
-                spawnedModel = modelPrefab != null
-                    ? Instantiate(modelPrefab, transform)
-                    : PlaceholderAnimalFactory.Create(animalId, transform);
-                spawnedModel.transform.localRotation = Quaternion.Euler(modelLocalEuler);
-                spawnedModel.transform.localPosition = Vector3.zero;
-
-                // Size the animal to the printed card. Models come in any
-                // scale, and a model many times larger than the card puts the
-                // camera inside it, so nothing shows at all.
-                float scale = ModelFitter.Fit(spawnedModel, CardWidthInTargetSpace() * modelScale);
-                spawnedModel.transform.localPosition += modelLocalPosition;
-
-                var idle = spawnedModel.GetComponent<AnimalIdleMotion>();
-                if (idle == null)
-                {
-                    idle = spawnedModel.AddComponent<AnimalIdleMotion>();
-                }
-                idle.Scale = scale;
-                idle.bobHeight = 0.02f * CardWidthInTargetSpace();
+                // Parented to the target so the animal stays on the card.
+                float cardWidth = CardWidthInTargetSpace();
+                spawnedModel = AnimalModelSpawner.Spawn(animal, transform, cardWidth * modelScale,
+                    modelLocalEuler, modelLocalPosition, modelPrefab);
             }
 
             spawnedModel.SetActive(true);

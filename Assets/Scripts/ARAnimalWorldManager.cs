@@ -18,6 +18,10 @@ namespace ARAnimalWorld
 
         public bool IsAnimalInView { get; private set; }
 
+        // True when the animal in view was recognised in a picture by
+        // AnimalPictureRecognizer rather than found on a printed card.
+        public bool IsFromPicture { get; private set; }
+
         public AnimalData SelectedAnimal => AnimalCatalog.Animals.Find(a => a.id == selectedAnimalId);
 
         private void Awake()
@@ -32,10 +36,12 @@ namespace ARAnimalWorld
             OnAnimalSelected?.Invoke(SelectedAnimal);
         }
 
-        // Called by AnimalImageTargetHandler when a printed card is scanned.
-        public void HandleAnimalDetected(AnimalId animalId)
+        // Called by AnimalImageTargetHandler when a printed card is scanned,
+        // and by AnimalPictureRecognizer when it recognises a picture.
+        public void HandleAnimalDetected(AnimalId animalId, bool fromPicture = false)
         {
             IsAnimalInView = true;
+            IsFromPicture = fromPicture;
             SelectAnimal(animalId);
             OnAnimalDetected?.Invoke(SelectedAnimal);
         }
@@ -48,6 +54,7 @@ namespace ARAnimalWorld
             }
 
             IsAnimalInView = false;
+            IsFromPicture = false;
             OnAnimalLost?.Invoke(GetAnimalById(animalId));
         }
 

@@ -12,6 +12,7 @@ Perkiraan waktu: 1 sampai 2 jam untuk pertama kali (sebagian besar menunggu down
 | 2. Pilih Hewan | Kartu Singa, Gajah, Kelinci, dan tombol Pindai Kartu AR |
 | 3a. Scan: mencari kartu | Kamera, bingkai scan dengan garis bergerak, "Arahkan kamera ke kartu hewan!" |
 | 3b. Scan: kartu ketemu | Hewan 3D berdiri di atas kartu, "Kartu ketemu!", nama dan fakta hewan, tombol suara dan info |
+| 3b. Scan: gambar hewan dikenali | Foto atau gambar singa, gajah, kelinci apa saja dikenali AI, hewan 3D muncul di depan kamera, "Hewan ketemu!" |
 | 3c. Scan: izin kamera | "Kameranya belum menyala", tombol Izinkan Kamera |
 | 4. Detail Hewan | Gambar hewan, fakta, Dengarkan Suara, Coba Hewan Lain |
 | 5. Tebak Hewan | Progres soal, gambar petunjuk, 3 pilihan jawaban, "Ulangi contoh", tombol Lanjut |
@@ -34,6 +35,7 @@ Belum ada model 3D atau suara asli? Tidak masalah. Game otomatis membuat hewan 3
 2. Di Unity Hub: **Projects > Add > Add project from disk**, pilih folder repo ini.
 3. Saat pertama dibuka, Unity akan mengimpor semua file. Tunggu sampai selesai.
 4. Buka **Window > TextMeshPro > Import TMP Essential Resources** lalu klik **Import**. Tanpa ini teks tidak muncul.
+5. Buka **Window > Package Manager**, pilih **Unity Registry**, cari **Inference Engine** (`com.unity.ai.inference`), lalu klik **Install**. Paket ini menjalankan AI pengenal gambar hewan.
 
 ## 3. Pasang Vuforia dan license key
 
@@ -120,7 +122,17 @@ Suara asli dipasang dengan menaruh file di `Assets/Resources/Audio`:
 
 Suara hewan bisa dari freesound.org (cek lisensinya).
 
-## 10. Kalau ada masalah
+## 10. AI pengenal gambar hewan
+
+Selain kartu, layar Scan juga mengenali **gambar singa, gajah, atau kelinci apa saja**: foto di buku, poster, layar HP lain, atau mainan. Begitu dikenali, hewan 3D-nya muncul di depan kamera (tidak menempel di gambar seperti pada kartu), dengan suara dan panel "Hewan ketemu!".
+
+- AI-nya adalah MobileNetV2 yang sudah dilatih dengan jutaan foto (ImageNet), jadi tidak perlu dilatih lagi. Filenya sudah ada di `Assets/AI/mobilenetv2-12.onnx`.
+- Paling bagus untuk foto dan gambar yang realistis. Gambar kartun sederhana sering tidak dikenali; untuk itu tetap pakai kartu.
+- Kalau kartu dan gambar terlihat bersamaan, kartu yang dipakai.
+- Pengaturannya ada di komponen **AnimalPictureRecognizer** pada objek `AR Animal World`: seberapa yakin AI harus (**Threshold**), jarak dan ukuran hewan di depan kamera.
+- Di Editor dan Development Build, di bawah tombol Tes ada kotak kecil yang menampilkan apa yang dilihat AI.
+
+## 11. Kalau ada masalah
 
 | Masalah | Solusi |
 | --- | --- |
@@ -138,6 +150,8 @@ Suara hewan bisa dari freesound.org (cek lisensinya).
 | Build gagal dengan error Gradle soal `android.useAndroidX` | Hapus paket **In-App Purchasing** (`com.unity.purchasing`) lewat Window > Package Manager. Paket bawaan template Unity 6 ini bentrok dengan Vuforia |
 | Build ditolak karena Minimum API Level | Vuforia 11 butuh minimal Android 10 (API 29). Atur di Player Settings |
 | Kamera AR tidak menyala walau license key benar | Setujui Vuforia Developer Agreement lewat **Help > Vuforia Engine > Show Developer Agreement** |
+| Error `Unity.InferenceEngine` tidak ditemukan | Pasang paket **Inference Engine** (langkah 2.5) |
+| Gambar hewan tidak dikenali AI | Pakai foto yang jelas dan terang, isi sebagian besar layar dengan hewannya. Gambar kartun sering tidak dikenali. Bisa juga turunkan **Threshold** di AnimalPictureRecognizer |
 | Ingin menghapus bintang saat testing | Menu **AR Animal World > Hapus Bintang Tersimpan** |
 
 ## Struktur script
@@ -153,7 +167,8 @@ Suara hewan bisa dari freesound.org (cek lisensinya).
 | `AR/ARCameraToggle.cs` | Menyalakan kamera AR, meminta izin kamera, dan memberi tahu layar Scan kalau kamera gagal |
 | `Game/GameAudio.cs`, `Game/PlaceholderSounds.cs` | Suara hewan, narasi, efek benar/salah |
 | `Game/PlaceholderAnimalFactory.cs` | Hewan 3D sementara dari bentuk dasar |
-| `Game/ModelFitter.cs` | Menyesuaikan ukuran model apa pun dengan lebar kartu |
+| `Game/ModelFitter.cs`, `Game/AnimalModelSpawner.cs` | Memunculkan model hewan dan menyesuaikan ukurannya |
+| `AI/AnimalPictureRecognizer.cs` | AI yang mengenali gambar hewan dari kamera dan memunculkan hewan 3D |
 | `Game/AnimalArt.cs` | Gambar hewan dan bintang untuk layar-layar |
 | `Editor/ARAnimalWorldSceneBuilder.cs`, `Editor/UIKit.cs` | Menu yang membuat seluruh UI sesuai desain dan menghubungkan kartu Vuforia |
 | `Editor/AnimalModelImporter.cs` | Menu yang mengambil singa, gajah, kelinci dari paket model dan menjadikannya prefab |

@@ -35,6 +35,7 @@ namespace ARAnimalWorld
 
         [Header("3b Found")]
         public GameObject foundBadge;
+        public TMP_Text foundText;
         public GameObject infoPanel;
         public TMP_Text nameText;
         public TMP_Text factText;
@@ -160,6 +161,10 @@ namespace ARAnimalWorld
             scanFrame.SetActive(false);
             cardHint.SetActive(false);
             foundBadge.SetActive(true);
+            if (foundText != null)
+            {
+                foundText.text = Game.appManager.IsFromPicture ? "Hewan ketemu!" : "Kartu ketemu!";
+            }
             nameText.text = animal.displayName;
             factText.text = animal.fact;
             infoPanel.SetActive(true);
