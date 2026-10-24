@@ -22,7 +22,7 @@ Belum ada model 3D atau suara asli? Tidak masalah. Game otomatis membuat hewan 3
 ## 1. Pasang Unity
 
 1. Download **Unity Hub** dari https://unity.com/download dan login.
-2. Di Unity Hub, buka **Installs > Install Editor** dan pilih **Unity 2022.3 LTS**.
+2. Di Unity Hub, buka **Installs > Install Editor** dan pilih **Unity 2022.3 LTS** (Unity 6 juga bisa).
 3. Centang modul **Android Build Support** beserta **OpenJDK** dan **Android SDK & NDK Tools**.
 4. Tunggu sampai selesai.
 
@@ -40,16 +40,15 @@ Belum ada model 3D atau suara asli? Tidak masalah. Game otomatis membuat hewan 3
 3. Download **Vuforia Engine for Unity** dari halaman Downloads, lalu klik dua kali file `.unitypackage` (atau seret ke Unity) dan klik **Import**. Unity akan meminta restart, ikuti saja.
 4. Buka **Window > Vuforia Configuration** dan tempel license key ke kolom **App License Key**.
 
-## 4. Buat database kartu hewan
+## 4. Siapkan gambar kartu hewan
 
 Vuforia perlu mengenali gambar kartu yang akan dicetak.
 
 1. Siapkan 3 gambar kartu (JPG/PNG): singa, gajah, kelinci. Gambar yang **ramai dan penuh detail** (ilustrasi berwarna dengan latar bertekstur) jauh lebih mudah dikenali daripada gambar polos.
-2. Di portal Vuforia buka **Target Manager > Generate Database**, pilih tipe **Device**, beri nama `AnimalCards`.
-3. **Add Target** untuk tiap gambar: tipe **Image**, **Width 0.08** (8 cm), dan beri nama `singa`, `gajah`, `kelinci`.
-4. Pastikan rating tiap target minimal 3 bintang. Kalau kurang, tambahkan detail pada gambar kartunya.
-5. Klik **Download Database**, pilih **Unity Editor**, lalu impor file `.unitypackage` tersebut ke proyek.
-6. Cetak ketiga kartu dengan ukuran sekitar 8 cm.
+2. Seret ketiga gambar itu ke panel **Project** di Unity (misalnya ke folder `Assets/Cards`).
+3. Cetak ketiga kartu dengan ukuran sekitar 8 cm.
+
+Tidak perlu membuat database di website Vuforia. Image Target bisa dibuat langsung dari gambar di Unity (langkah 5).
 
 ## 5. Siapkan scene
 
@@ -57,15 +56,17 @@ Vuforia perlu mengenali gambar kartu yang akan dicetak.
 2. Hapus **Main Camera** dari Hierarchy.
 3. Tambahkan kamera AR: **GameObject > Vuforia Engine > AR Camera**.
 4. Tambahkan 3 kartu: **GameObject > Vuforia Engine > Image Target**, tiga kali. Pada tiap Image Target di Inspector:
-   - **Type**: From Database
-   - **Database**: AnimalCards
-   - **Image Target**: singa / gajah / kelinci
+   - **Type**: From Image
+   - **Image**: seret gambar kartu yang sesuai ke kolom ini
+   - **Width**: `0.08` (8 cm)
    - Ganti nama objeknya menjadi `Singa`, `Gajah`, `Kelinci`
 5. Klik menu **AR Animal World > Bangun Game di Scene Ini**.
 
 Menu ini membuat semua 6 layar, manager game, panggung preview 3D, ikon hewan, lalu memasang `AnimalImageTargetHandler` ke tiap Image Target sesuai namanya (singa, gajah, kelinci) dan `ARCameraToggle` ke AR Camera. Menu ini aman dijalankan ulang kapan saja.
 
 6. Simpan scene dengan **Ctrl+S**.
+
+Cara lain (opsional): membuat database di portal Vuforia, lewat **Develop > Target Manager > Add Database** (tipe Device). Tambahkan tiap gambar sebagai target Image dengan width 0.08, download untuk **Unity Editor**, impor `.unitypackage`-nya, lalu pada Image Target pilih **Type: From Database**. Cara ini juga menampilkan rating bintang tiap gambar (usahakan minimal 3).
 
 ## 6. Coba di komputer
 
@@ -118,7 +119,8 @@ Model 3D gratis yang ramah anak bisa dicari di Unity Asset Store, Sketchfab (lis
 | Teks berupa kotak atau tidak muncul | Jalankan Import TMP Essential Resources (langkah 2.4) |
 | Ada error merah `Vuforia` saat membuka proyek | Vuforia belum terpasang. Ikuti langkah 3 |
 | Layar Scan hitam atau muncul pesan "Kamera AR belum siap" | Cek license key di Vuforia Configuration |
-| Kartu tidak terdeteksi | Pakai cahaya terang, kartu tidak mengkilap, dan gambar kartu yang lebih detail (rating 3+ bintang) |
+| Kartu tidak terdeteksi | Pakai cahaya terang, kartu tidak mengkilap, dan gambar kartu yang lebih detail |
+| Menu Vuforia Configuration tidak ada | Vuforia belum diimpor. Ikuti langkah 3 |
 | Hewan di atas kartu terlalu besar atau kecil | Ubah **Model Scale** di komponen `AnimalImageTargetHandler` pada Image Target |
 | Hewan berwarna pink | Proyek memakai URP tapi materialnya tidak cocok. Pakai Built-in Render Pipeline, atau ganti shader model ke URP/Lit |
 | Kamera tidak menyala di layar Scan | Matikan centang **Camera Only On Scan Screen** di komponen `ARCameraToggle` pada AR Camera |
