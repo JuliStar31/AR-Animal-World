@@ -81,7 +81,7 @@ Cara lain (opsional): membuat database di portal Vuforia, lewat **Develop > Targ
 3. Klik **Player Settings** dan atur:
    - **Company Name** dan **Product Name**: `AR Animal World`
    - **Other Settings > Package Name**: misalnya `com.namakamu.aranimalworld`
-   - **Minimum API Level**: Android 8.0 (API 26) atau lebih tinggi
+   - **Minimum API Level**: Android 10 (API 29) atau lebih tinggi. Vuforia 11 tidak mendukung Android di bawah 10, jadi HP yang dipakai juga minimal Android 10
    - **Scripting Backend**: IL2CPP
    - **Target Architectures**: centang **ARM64**
    - **Resolution and Presentation > Default Orientation**: Portrait
