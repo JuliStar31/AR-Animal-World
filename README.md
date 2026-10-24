@@ -84,14 +84,15 @@ AR-Animal-World/
 
 Full step-by-step guide (Indonesian): [docs/Panduan-Build-APK.md](docs/Panduan-Build-APK.md)
 
-1. Open this repository in Unity 2022.3 LTS and import TMP Essential Resources
-2. Install Vuforia Engine and paste your license key in Vuforia Configuration
-3. Add an AR Camera and three Image Targets named Singa, Gajah, Kelinci
-4. Run **AR Animal World > Bangun Game di Scene Ini** to build all six screens and wire the cards
-5. Press Play (the Scan screen has test buttons that fake a detected card)
-6. Build for Android
+1. Open this repository in Unity 6 (tested with 6000.3) and import TMP Essential Resources
+2. Install Vuforia Engine 11 and paste your license key in Vuforia Configuration
+3. Add an AR Camera and three Image Targets named Singa, Gajah, Kelinci, using the printable cards
+4. Optional: copy a 3D animal pack into `Assets/ThirdParty` and run **AR Animal World > Siapkan Model Hewan 3D**
+5. Run **AR Animal World > Bangun Game di Scene Ini** to build every screen from the UI design and wire the cards
+6. Press Play (the Scan screen has test buttons that fake a detected card)
+7. Build for Android (minimum Android 10 / API 29)
 
-Placeholder 3D animals and synthesized sounds are generated automatically, so the game is playable before real models and audio exist. Drop real ones into `Assets/Resources/Models` and `Assets/Resources/Audio` to replace them.
+Placeholder 3D animals and synthesized sounds are generated automatically, so the game is playable before real models and audio exist. **Siapkan Model Hewan 3D** finds a lion, elephant and rabbit in any model under `Assets` and saves them as prefabs in `Assets/Resources/Models`, turned to face the player and sized to the card. Real sounds go in `Assets/Resources/Audio`.
 
 ## Next steps
 

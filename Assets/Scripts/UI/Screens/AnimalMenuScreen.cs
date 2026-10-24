@@ -8,22 +8,30 @@ namespace ARAnimalWorld
     public class AnimalCardView
     {
         public AnimalId animalId;
-        public Button learnButton;
-        public Button scanButton;
+        public Button cardButton;
+        public Button openButton;
         public TMP_Text nameLabel;
+        public Image icon;
     }
 
-    // Screen 2: "Pilih Hewan" with one card per animal.
+    // Screen 2: "Pilih Hewan" with one card per animal, and a button to
+    // scan a printed card.
     public class AnimalMenuScreen : UIScreen
     {
         public override ScreenId Id => ScreenId.AnimalMenu;
 
         public AnimalCardView[] cards;
+        public Button scanButton;
         public Button backButton;
 
         protected override void OnInitialize()
         {
             backButton.onClick.AddListener(Game.Back);
+            scanButton.onClick.AddListener(() =>
+            {
+                Game.gameAudio.PlayTap();
+                Game.OpenScan();
+            });
 
             foreach (var card in cards)
             {
@@ -32,19 +40,24 @@ namespace ARAnimalWorld
                 {
                     card.nameLabel.text = Game.appManager.GetAnimalById(id).displayName;
                 }
-                card.learnButton.onClick.AddListener(() =>
+                if (card.icon != null && Game.art != null)
+                {
+                    card.icon.sprite = Game.art.For(id);
+                }
+
+                void Open()
                 {
                     Game.gameAudio.PlayTap();
                     Game.OpenAnimal(id);
-                });
-                if (card.scanButton != null)
+                }
+
+                if (card.cardButton != null)
                 {
-                    card.scanButton.onClick.AddListener(() =>
-                    {
-                        Game.gameAudio.PlayTap();
-                        Game.appManager.SelectAnimal(id);
-                        Game.OpenScan();
-                    });
+                    card.cardButton.onClick.AddListener(Open);
+                }
+                if (card.openButton != null)
+                {
+                    card.openButton.onClick.AddListener(Open);
                 }
             }
         }

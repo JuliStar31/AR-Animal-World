@@ -10,7 +10,6 @@ namespace ARAnimalWorld
 
         public Button startLearningButton;
         public Button quizButton;
-        public Button scanButton;
         public TMP_Text starsLabel;
 
         protected override void OnInitialize()
@@ -25,14 +24,6 @@ namespace ARAnimalWorld
                 Game.gameAudio.PlayTap();
                 Game.StartQuiz();
             });
-            if (scanButton != null)
-            {
-                scanButton.onClick.AddListener(() =>
-                {
-                    Game.gameAudio.PlayTap();
-                    Game.OpenScan();
-                });
-            }
             Game.appManager.OnStarsUpdated += UpdateStars;
         }
 

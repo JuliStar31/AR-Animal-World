@@ -5,51 +5,76 @@ using UnityEngine.UI;
 
 namespace ARAnimalWorld
 {
+    public enum CameraState
+    {
+        Ok,
+        NeedsPermission,
+        Error
+    }
+
     // Screen 3: camera view. The background stays see-through so the AR
-    // camera shows behind the UI. When a card is found (via
-    // AnimalImageTargetHandler -> ARAnimalWorldManager) the info panel
-    // slides in with the name, fact and buttons.
+    // camera shows behind the UI.
+    //  3a  searching: guide bubble, scan frame and a hint card
+    //  3b  found: "Kartu ketemu!" and an info panel with name, fact, sound
+    //  3c  camera off: friendly panel with "Izinkan Kamera"
     public class ScanScreen : UIScreen
     {
         public override ScreenId Id => ScreenId.Scan;
 
-        // ARCameraToggle listens to this to turn the AR camera on and off.
+        // AnimalImageTargetHandler and ARCameraToggle listen to these.
+        public static bool IsScanning { get; private set; }
         public static event Action<bool> ScanningChanged;
+        public static event Action CameraPermissionRequested;
 
-        public TMP_Text guideText;
+        public Button backButton;
+
+        [Header("3a Searching")]
+        public GameObject guidePanel;
         public GameObject scanFrame;
+        public GameObject cardHint;
+
+        [Header("3b Found")]
+        public GameObject foundBadge;
         public GameObject infoPanel;
         public TMP_Text nameText;
         public TMP_Text factText;
         public Button soundButton;
-        public Button learnButton;
-        public Button quizButton;
-        public Button backButton;
-        public GameObject cameraMessagePanel;
-        public TMP_Text cameraMessageText;
+        public Button infoButton;
+
+        [Header("3c Camera off")]
+        public GameObject cameraPanel;
+        public TMP_Text cameraTitle;
+        public TMP_Text cameraMessage;
+        public Button allowCameraButton;
+        public Button cameraBackButton;
 
         [Header("Testing without cards (Editor and development builds only)")]
         public GameObject simulatePanel;
         public Button[] simulateButtons = new Button[0];
 
-        private const string GuideSearching = "Arahkan kamera ke kartu hewan!";
-        private const string GuideFound = "Wah, ketemu!";
+        private const string PermissionTitle = "Kameranya belum menyala";
+        private const string PermissionMessage = "Ayo izinkan kamera supaya hewan bisa muncul!";
 
-        private static string pendingCameraMessage;
+        private static CameraState cameraState = CameraState.Ok;
+        private static string cameraText;
 
         protected override void OnInitialize()
         {
             backButton.onClick.AddListener(Game.Back);
+            cameraBackButton.onClick.AddListener(Game.Back);
             soundButton.onClick.AddListener(() => Game.gameAudio.PlayAnimal(Game.appManager.SelectedAnimal));
-            learnButton.onClick.AddListener(() =>
+            if (infoButton != null)
+            {
+                infoButton.onClick.AddListener(() =>
+                {
+                    Game.gameAudio.PlayTap();
+                    Game.OpenAnimal(Game.appManager.selectedAnimalId);
+                });
+            }
+            allowCameraButton.onClick.AddListener(() =>
             {
                 Game.gameAudio.PlayTap();
-                Game.OpenAnimal(Game.appManager.selectedAnimalId);
-            });
-            quizButton.onClick.AddListener(() =>
-            {
-                Game.gameAudio.PlayTap();
-                Game.StartQuiz(Game.appManager.selectedAnimalId);
+                CameraPermissionRequested?.Invoke();
             });
 
             Game.appManager.OnAnimalDetected += HandleDetected;
@@ -79,44 +104,48 @@ namespace ARAnimalWorld
                 ShowSearching();
             }
 
-            ShowCameraMessage(pendingCameraMessage);
+            ApplyCameraState();
+            IsScanning = true;
             ScanningChanged?.Invoke(true);
         }
 
         protected override void OnHide()
         {
+            IsScanning = false;
             ScanningChanged?.Invoke(false);
         }
 
-        // Shown gently when the camera cannot start (no permission, no
-        // Vuforia key, etc.). Pass null to hide it.
-        public static void ReportCameraProblem(string message)
+        public static void ReportCameraState(CameraState state, string message = null)
         {
-            pendingCameraMessage = message;
+            cameraState = state;
+            cameraText = message;
             foreach (var screen in FindObjectsOfType<ScanScreen>())
             {
-                screen.ShowCameraMessage(message);
+                screen.ApplyCameraState();
             }
         }
 
-        private void ShowCameraMessage(string message)
+        private void ApplyCameraState()
         {
-            if (cameraMessagePanel == null)
+            bool off = cameraState != CameraState.Ok;
+            cameraPanel.SetActive(off);
+            if (!off)
             {
                 return;
             }
 
-            cameraMessagePanel.SetActive(!string.IsNullOrEmpty(message));
-            if (cameraMessageText != null && !string.IsNullOrEmpty(message))
-            {
-                cameraMessageText.text = message;
-            }
+            cameraTitle.text = PermissionTitle;
+            cameraMessage.text = cameraState == CameraState.NeedsPermission || string.IsNullOrEmpty(cameraText)
+                ? PermissionMessage
+                : cameraText;
         }
 
         private void ShowSearching()
         {
-            guideText.text = GuideSearching;
+            guidePanel.SetActive(true);
             scanFrame.SetActive(true);
+            cardHint.SetActive(true);
+            foundBadge.SetActive(false);
             infoPanel.SetActive(false);
         }
 
@@ -127,8 +156,10 @@ namespace ARAnimalWorld
                 return;
             }
 
-            guideText.text = GuideFound;
+            guidePanel.SetActive(false);
             scanFrame.SetActive(false);
+            cardHint.SetActive(false);
+            foundBadge.SetActive(true);
             nameText.text = animal.displayName;
             factText.text = animal.fact;
             infoPanel.SetActive(true);

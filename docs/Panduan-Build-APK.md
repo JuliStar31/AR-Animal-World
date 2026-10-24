@@ -8,16 +8,18 @@ Perkiraan waktu: 1 sampai 2 jam untuk pertama kali (sebagian besar menunggu down
 
 | Layar | Isi |
 | --- | --- |
-| 1. Beranda | Judul, "Yuk, kenali dunia hewan!", tombol Mulai Belajar, Main Kuis, Scan Kartu, jumlah bintang |
-| 2. Pilih Hewan | Kartu Singa, Gajah, Kelinci dengan tombol Belajar dan Scan AR |
-| 3. Scan AR | Kamera, bingkai scan berdenyut, panel info saat kartu ditemukan, tombol suara |
-| 4. Detail Hewan | Hewan 3D berputar, fakta, narasi, Dengarkan Suara, Coba Hewan Lain |
-| 5. Kuis | "Tebak Hewan!", 3 pilihan jawaban bergambar, "Hebat sekali!" atau "Ayo coba lagi!" |
-| 6. Hasil | "Kamu Hebat!", bintang yang didapat, Main Lagi, Kembali ke Beranda |
+| 1. Beranda | Maskot singa, judul Animal World, tombol Mulai Belajar dan Main Kuis, jumlah bintang |
+| 2. Pilih Hewan | Kartu Singa, Gajah, Kelinci, dan tombol Pindai Kartu AR |
+| 3a. Scan: mencari kartu | Kamera, bingkai scan dengan garis bergerak, "Arahkan kamera ke kartu hewan!" |
+| 3b. Scan: kartu ketemu | Hewan 3D berdiri di atas kartu, "Kartu ketemu!", nama dan fakta hewan, tombol suara dan info |
+| 3c. Scan: izin kamera | "Kameranya belum menyala", tombol Izinkan Kamera |
+| 4. Detail Hewan | Gambar hewan, fakta, Dengarkan Suara, Coba Hewan Lain |
+| 5. Tebak Hewan | Progres soal, gambar petunjuk, 3 pilihan jawaban, "Ulangi contoh", tombol Lanjut |
+| 6. Hasil Kuis | Bintang yang didapat, pesan semangat, Main Lagi, Kembali ke Beranda |
 
 Bintang tersimpan di HP. Tombol kembali Android juga berfungsi.
 
-Belum ada model 3D atau suara asli? Tidak masalah. Game otomatis membuat hewan 3D sederhana dari bentuk dasar dan suara sintetis, jadi semuanya bisa langsung dicoba. Nanti tinggal diganti (lihat bagian 9).
+Belum ada model 3D atau suara asli? Tidak masalah. Game otomatis membuat hewan 3D sederhana dari bentuk dasar dan suara sintetis, jadi semuanya bisa langsung dicoba. Model hewan asli dipasang lewat bagian 9.
 
 ## 1. Pasang Unity
 
@@ -62,7 +64,7 @@ Tidak perlu membuat database di website Vuforia. Image Target bisa dibuat langsu
    - Ganti nama objeknya menjadi `Singa`, `Gajah`, `Kelinci`
 5. Klik menu **AR Animal World > Bangun Game di Scene Ini**.
 
-Menu ini membuat semua 6 layar, manager game, panggung preview 3D, ikon hewan, lalu memasang `AnimalImageTargetHandler` ke tiap Image Target sesuai namanya (singa, gajah, kelinci) dan `ARCameraToggle` ke AR Camera. Menu ini aman dijalankan ulang kapan saja.
+Menu ini membuat semua layar sesuai desain (font Fredoka, gambar dan ikon dari `Assets/Art/UI`), manager game, cahaya matahari kalau scene belum punya, lalu memasang `AnimalImageTargetHandler` ke tiap Image Target sesuai namanya (singa, gajah, kelinci) dan `ARCameraToggle` ke AR Camera. Menu ini aman dijalankan ulang kapan saja.
 
 6. Simpan scene dengan **Ctrl+S**.
 
@@ -94,23 +96,29 @@ Cara lain (opsional): membuat database di portal Vuforia, lewat **Develop > Targ
 3. Atau sambungkan HP dengan kabel, aktifkan **Opsi Developer > USB Debugging**, lalu klik **Build And Run**.
 4. Saat pertama dibuka, izinkan akses kamera.
 
-## 9. Mengganti placeholder dengan aset asli
+## 9. Memasang model hewan 3D asli
 
-Buat folder `Assets/Resources/Models` dan `Assets/Resources/Audio` jika belum ada.
+Model dari paket hewan tidak disimpan di GitHub (berlisensi dan ukurannya besar), jadi disalin manual ke proyek:
+
+1. Buat folder `Assets/ThirdParty`.
+2. Ekstrak paket hewan. Salin folder `Realistic Animated Pack` (berisi `Realistic Animated Pack.fbx` dan folder `textures`) ke `Assets/ThirdParty/`. Isinya antara lain singa betina (Lioness) dan kelinci.
+3. Ekstrak `elephant-gajah.zip` ke `Assets/ThirdParty/elephant-gajah/`, sehingga ada `source/ELEPHANT_M.3ds` dan `textures/ELPHSKIN.jpg`, `textures/ELETUSK.jpg`.
+4. Tunggu Unity selesai mengimpor, lalu klik menu **AR Animal World > Siapkan Model Hewan 3D**.
+
+Menu ini mencari singa (juga "lioness"), gajah, dan kelinci di semua model dalam `Assets`, lalu membuat `Assets/Resources/Models/LionModel.prefab`, `ElephantModel.prefab`, dan `RabbitModel.prefab`. Tiap hewan otomatis diputar supaya kepalanya menghadap anak yang memegang HP, diberi material yang cocok dengan URP, dan ukurannya disesuaikan dengan lebar kartu saat muncul. Foto cek tiap hewan disimpan di folder `ModelPreviews` (di samping folder `Assets`). Animasi bawaan paket tidak dipakai; hewan bergerak naik-turun pelan sebagai gantinya.
+
+Hewan yang modelnya tidak ditemukan tetap memakai model sederhana. Model lain juga bisa dipakai: taruh di `Assets/ThirdParty`, pastikan nama file atau nama objeknya mengandung `lion`/`singa`, `elephant`/`gajah`, atau `rabbit`/`kelinci`, lalu jalankan menu ini lagi.
+
+Suara asli dipasang dengan menaruh file di `Assets/Resources/Audio`:
 
 | Untuk | Nama file |
 | --- | --- |
-| Model singa | `Assets/Resources/Models/LionModel.prefab` |
-| Model gajah | `Assets/Resources/Models/ElephantModel.prefab` |
-| Model kelinci | `Assets/Resources/Models/RabbitModel.prefab` |
 | Suara singa | `Assets/Resources/Audio/lion_roar` (wav/mp3/ogg) |
 | Suara gajah | `Assets/Resources/Audio/elephant_trumpet` |
 | Suara kelinci | `Assets/Resources/Audio/rabbit_squeak` |
 | Narasi (opsional) | `Assets/Resources/Audio/narration_lion`, `narration_elephant`, `narration_rabbit` |
 
-Tips model: buat prefab dengan tinggi sekitar 1 unit, kaki di y = 0, menghadap ke arah -Z. Setelah menambah model, jalankan lagi menu **AR Animal World > Bangun Game di Scene Ini** supaya ikon di menu ikut diperbarui.
-
-Model 3D gratis yang ramah anak bisa dicari di Unity Asset Store, Sketchfab (lisensi CC), atau Poly Pizza. Suara hewan bisa dari freesound.org (cek lisensinya).
+Suara hewan bisa dari freesound.org (cek lisensinya).
 
 ## 10. Kalau ada masalah
 
@@ -121,9 +129,12 @@ Model 3D gratis yang ramah anak bisa dicari di Unity Asset Store, Sketchfab (lis
 | Layar Scan hitam atau muncul pesan "Kamera AR belum siap" | Cek license key di Vuforia Configuration |
 | Kartu tidak terdeteksi | Pakai cahaya terang, kartu tidak mengkilap, dan gambar kartu yang lebih detail |
 | Menu Vuforia Configuration tidak ada | Vuforia belum diimpor. Ikuti langkah 3 |
-| Hewan di atas kartu terlalu besar atau kecil | Ubah **Model Scale** di komponen `AnimalImageTargetHandler` pada Image Target |
-| Hewan berwarna pink | Proyek memakai URP tapi materialnya tidak cocok. Pakai Built-in Render Pipeline, atau ganti shader model ke URP/Lit |
-| Kamera tidak menyala di layar Scan | Matikan centang **Camera Only On Scan Screen** di komponen `ARCameraToggle` pada AR Camera |
+| Kartu terdeteksi tapi hewan 3D tidak muncul | Pastikan layar Scan yang terbuka (hewan hanya muncul di layar Scan). Cek **Width** Image Target `0.08`, lalu jalankan lagi **Bangun Game di Scene Ini** |
+| Hewan di atas kartu terlalu besar atau kecil | Ubah **Model Scale** di komponen `AnimalImageTargetHandler` pada Image Target. 1 berarti sepanjang lebar kartu |
+| Hewan menghadap ke arah yang salah | Ubah **Model Local Euler** Y di komponen `AnimalImageTargetHandler` (misalnya 210 untuk membalik) |
+| Hewan tampak gelap | Scene belum punya cahaya. Jalankan lagi **Bangun Game di Scene Ini**, menu ini menambahkan cahaya matahari |
+| Hewan berwarna pink atau tanpa tekstur | Jalankan lagi **Siapkan Model Hewan 3D**. Pastikan folder `textures` ikut tersalin di samping model |
+| Layar Scan menampilkan "Kameranya belum menyala" | Tekan **Izinkan Kamera**. Kalau izin pernah ditolak, buka Pengaturan HP > Aplikasi > AR Animal World > Izin > Kamera |
 | Build gagal dengan error Gradle soal `android.useAndroidX` | Hapus paket **In-App Purchasing** (`com.unity.purchasing`) lewat Window > Package Manager. Paket bawaan template Unity 6 ini bentrok dengan Vuforia |
 | Build ditolak karena Minimum API Level | Vuforia 11 butuh minimal Android 10 (API 29). Atur di Player Settings |
 | Kamera AR tidak menyala walau license key benar | Setujui Vuforia Developer Agreement lewat **Help > Vuforia Engine > Show Developer Agreement** |
@@ -139,7 +150,11 @@ Model 3D gratis yang ramah anak bisa dicari di Unity Asset Store, Sketchfab (lis
 | `QuizManager.cs`, `Game/QuizSession.cs` | Kuis satu soal per hewan. Bintang hanya untuk jawaban benar di percobaan pertama, tapi anak boleh mencoba lagi sampai benar |
 | `ARAnimalWorldManager.cs` | Hewan terpilih, kartu yang terdeteksi, total bintang (tersimpan) |
 | `AR/AnimalImageTargetHandler.cs` | Memunculkan hewan di atas kartu dan memutar suaranya |
-| `AR/ARCameraToggle.cs` | Kamera AR hanya menyala di layar Scan, dan pesan ramah kalau kamera gagal |
+| `AR/ARCameraToggle.cs` | Menyalakan kamera AR, meminta izin kamera, dan memberi tahu layar Scan kalau kamera gagal |
 | `Game/GameAudio.cs`, `Game/PlaceholderSounds.cs` | Suara hewan, narasi, efek benar/salah |
 | `Game/PlaceholderAnimalFactory.cs` | Hewan 3D sementara dari bentuk dasar |
-| `Editor/ARAnimalWorldSceneBuilder.cs` | Menu yang membuat seluruh UI dan menghubungkan kartu Vuforia |
+| `Game/ModelFitter.cs` | Menyesuaikan ukuran model apa pun dengan lebar kartu |
+| `Game/AnimalArt.cs` | Gambar hewan dan bintang untuk layar-layar |
+| `Editor/ARAnimalWorldSceneBuilder.cs`, `Editor/UIKit.cs` | Menu yang membuat seluruh UI sesuai desain dan menghubungkan kartu Vuforia |
+| `Editor/AnimalModelImporter.cs` | Menu yang mengambil singa, gajah, kelinci dari paket model dan menjadikannya prefab |
+| `tools/make_ui_art.py` | Menggambar ilustrasi hewan, bintang, dan ikon di `Assets/Art/UI` |

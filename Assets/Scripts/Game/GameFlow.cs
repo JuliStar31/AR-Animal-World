@@ -10,7 +10,7 @@ namespace ARAnimalWorld
         public QuizManager quizManager;
         public GameAudio gameAudio;
         public ScreenRouter router;
-        public AnimalPreview animalPreview;
+        public AnimalArt art;
 
         private void Start()
         {

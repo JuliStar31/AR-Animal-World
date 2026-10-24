@@ -426,3 +426,13 @@ FodyWeavers.xsd
 
 # Official VS Code C# Dev Kit Extension exclusion
 #*.lscache
+
+# Third-party 3D animal packs and the prefabs generated from them stay local
+# (licensed assets, too large for git). See docs/Panduan-Build-APK.md.
+Assets/ThirdParty/
+Assets/ThirdParty.meta
+Assets/Resources/Models/
+Assets/Resources/Models.meta
+
+# Check photos written by AR Animal World > Siapkan Model Hewan 3D
+ModelPreviews/

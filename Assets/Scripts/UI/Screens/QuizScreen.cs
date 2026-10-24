@@ -1,36 +1,52 @@
-using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace ARAnimalWorld
 {
-    // Screen 5: "Tebak Hewan!" One question per animal with three big
-    // answer cards. A wrong answer only fades that card and says
-    // "Ayo coba lagi!"; a right answer celebrates and moves on.
+    // Screen 5: "Tebak Hewan!" One question per animal with three answer
+    // cards. A wrong answer only fades that card and says "Ayo coba lagi!";
+    // a right answer turns the card green and unlocks "Lanjut".
     public class QuizScreen : UIScreen
     {
         public override ScreenId Id => ScreenId.Quiz;
 
-        public TMP_Text questionText;
-        public TMP_Text progressText;
+        public Image[] progressSegments = new Image[0];
         public TMP_Text starsText;
-        public TMP_Text feedbackText;
-        public Image[] progressDots = new Image[0];
+        public Image clueImage;
+        public TMP_Text questionText;
         public Button[] answerButtons = new Button[3];
+        public Image[] answerBorders = new Image[3];
         public TMP_Text[] answerLabels = new TMP_Text[3];
         public Image[] answerIcons = new Image[3];
-        public Sprite[] animalIcons = new Sprite[0];
+        public Image feedbackPanel;
+        public TMP_Text feedbackText;
+        public Button replayButton;
+        public Button nextButton;
+        public Image nextFace;
+        public Image nextShadow;
+        public TMP_Text nextLabel;
         public Button backButton;
-        public float delayAfterCorrect = 1.4f;
-        public float dotSpacing = 80f;
 
-        public Color dotDone = new Color(1f, 0.85f, 0.36f);
-        public Color dotTodo = new Color(0.91f, 0.93f, 0.96f);
-        public Color correctColor = new Color(0.45f, 0.79f, 0.43f);
-        public Color tryAgainColor = new Color(1f, 0.7f, 0.42f);
+        public float segmentGap = 16f;
+        public Color segmentDone = new Color32(27, 127, 59, 255);
+        public Color segmentTodo = new Color32(236, 248, 254, 255);
+        public Color borderIdle = new Color32(245, 190, 72, 255);
+        public Color borderCorrect = new Color32(27, 127, 59, 255);
+        public Color feedbackIdle = new Color32(232, 246, 254, 255);
+        public Color feedbackCorrect = new Color32(214, 240, 214, 255);
+        public Color feedbackTryAgain = new Color32(255, 236, 214, 255);
+        public Color textIdle = new Color32(18, 74, 115, 255);
+        public Color textCorrect = new Color32(27, 127, 59, 255);
+        public Color textTryAgain = new Color32(201, 116, 31, 255);
+        public Color nextOff = new Color32(214, 208, 192, 255);
+        public Color nextOffShadow = new Color32(186, 178, 160, 255);
+        public Color nextOffText = new Color32(92, 85, 70, 255);
+        public Color nextOn = new Color32(27, 127, 59, 255);
+        public Color nextOnShadow = new Color32(17, 89, 42, 255);
 
-        private Coroutine advance;
+        private const string Prompt = "Pilih satu jawaban ya!";
+        private bool answered;
 
         protected override void OnInitialize()
         {
@@ -40,6 +56,17 @@ namespace ARAnimalWorld
                 int index = i;
                 answerButtons[i].onClick.AddListener(() => Answer(index));
             }
+
+            replayButton.onClick.AddListener(PlayHint);
+            nextButton.onClick.AddListener(() =>
+            {
+                if (!answered)
+                {
+                    return;
+                }
+                Game.gameAudio.PlayTap();
+                Game.quizManager.GoToNextQuestion();
+            });
 
             Game.quizManager.OnQuestionShown += ShowQuestion;
             Game.quizManager.OnFeedbackShown += ShowFeedback;
@@ -55,15 +82,6 @@ namespace ARAnimalWorld
             }
         }
 
-        protected override void OnHide()
-        {
-            if (advance != null)
-            {
-                StopCoroutine(advance);
-                advance = null;
-            }
-        }
-
         private void ShowQuestion(AnimalData question)
         {
             if (question == null)
@@ -72,17 +90,21 @@ namespace ARAnimalWorld
             }
 
             var session = Game.quizManager.Session;
+            answered = false;
             questionText.text = question.quizQuestion;
-            progressText.text = $"Soal {session.CurrentIndex + 1} dari {session.QuestionCount}";
-            starsText.text = session.StarsEarned.ToString();
-            feedbackText.text = string.Empty;
+            starsText.text = Game.appManager.starsCollected.ToString();
 
-            for (int i = 0; i < progressDots.Length; i++)
+            if (clueImage != null && Game.art != null)
             {
-                progressDots[i].gameObject.SetActive(i < session.QuestionCount);
-                ResultsScreen.CenterInRow(progressDots[i].rectTransform, i, Mathf.Min(session.QuestionCount, progressDots.Length), dotSpacing);
-                progressDots[i].color = i < session.CurrentIndex ? dotDone : dotTodo;
+                // The clue shows the animal the question is about.
+                var answer = question.quizAnswers[question.correctAnswerIndex];
+                clueImage.sprite = Game.art.ForName(answer);
+                clueImage.enabled = clueImage.sprite != null;
             }
+
+            LayoutSegments(session.QuestionCount, session.CurrentIndex);
+            SetFeedback(Prompt, feedbackIdle, textIdle);
+            SetNextEnabled(false);
 
             for (int i = 0; i < answerButtons.Length; i++)
             {
@@ -95,21 +117,21 @@ namespace ARAnimalWorld
 
                 string answer = question.quizAnswers[i];
                 answerButtons[i].interactable = true;
-                SetButtonAlpha(answerButtons[i], 1f);
+                SetAlpha(answerButtons[i], 1f);
+                answerBorders[i].color = borderIdle;
                 answerLabels[i].text = answer;
 
-                if (i < answerIcons.Length && answerIcons[i] != null)
+                if (i < answerIcons.Length && answerIcons[i] != null && Game.art != null)
                 {
-                    var icon = IconForName(answer);
-                    answerIcons[i].sprite = icon;
-                    answerIcons[i].enabled = icon != null;
+                    answerIcons[i].sprite = Game.art.ForName(answer);
+                    answerIcons[i].enabled = answerIcons[i].sprite != null;
                 }
             }
         }
 
         private void Answer(int index)
         {
-            if (advance != null)
+            if (answered)
             {
                 return;
             }
@@ -117,50 +139,96 @@ namespace ARAnimalWorld
             bool correct = Game.quizManager.AnswerCurrentQuestion(index);
             if (correct)
             {
+                answered = true;
                 Game.gameAudio.PlayCorrect();
                 foreach (var button in answerButtons)
                 {
                     button.interactable = false;
                 }
-                SetButtonAlpha(answerButtons[index], 1f);
-                advance = StartCoroutine(AdvanceAfterDelay());
+                answerBorders[index].color = borderCorrect;
+                SetNextEnabled(true);
             }
             else
             {
                 Game.gameAudio.PlayTryAgain();
                 answerButtons[index].interactable = false;
-                SetButtonAlpha(answerButtons[index], 0.45f);
+                SetAlpha(answerButtons[index], 0.45f);
             }
         }
 
         private void ShowFeedback(string message, bool correct)
         {
-            feedbackText.text = message;
-            feedbackText.color = correct ? correctColor : tryAgainColor;
-            starsText.text = Game.quizManager.Session.StarsEarned.ToString();
+            SetFeedback(message, correct ? feedbackCorrect : feedbackTryAgain, correct ? textCorrect : textTryAgain);
+            starsText.text = Game.appManager.starsCollected.ToString();
 
-            var pop = feedbackText.GetComponent<PopInEffect>();
+            var pop = feedbackPanel.GetComponent<PopInEffect>();
             if (pop != null)
             {
                 pop.Play();
             }
         }
 
-        private IEnumerator AdvanceAfterDelay()
+        // "Ulangi contoh": plays the sound of the animal the question is
+        // about, as a hint.
+        private void PlayHint()
         {
-            yield return new WaitForSeconds(delayAfterCorrect);
-            advance = null;
-            Game.quizManager.GoToNextQuestion();
+            var question = Game.quizManager.Session?.CurrentQuestion;
+            if (question == null)
+            {
+                return;
+            }
+            var answer = question.quizAnswers[question.correctAnswerIndex];
+            var animal = AnimalCatalog.Animals.Find(a => a.displayName == answer);
+            Game.gameAudio.PlayAnimal(animal ?? question, false);
         }
 
-        private Sprite IconForName(string displayName)
+        private void SetFeedback(string message, Color panel, Color text)
         {
-            int index = AnimalCatalog.Animals.FindIndex(a => a.displayName == displayName);
-            return index >= 0 && index < animalIcons.Length ? animalIcons[index] : null;
+            feedbackText.text = message;
+            feedbackText.color = text;
+            feedbackPanel.color = panel;
+        }
+
+        private void SetNextEnabled(bool enabled)
+        {
+            nextButton.interactable = enabled;
+            nextFace.color = enabled ? nextOn : nextOff;
+            nextShadow.color = enabled ? nextOnShadow : nextOffShadow;
+            nextLabel.color = enabled ? Color.white : nextOffText;
+        }
+
+        // Splits the bar into one segment per question.
+        private void LayoutSegments(int count, int done)
+        {
+            int shown = Mathf.Min(count, progressSegments.Length);
+            if (shown == 0)
+            {
+                return;
+            }
+
+            var parent = (RectTransform)progressSegments[0].rectTransform.parent;
+            float width = (parent.rect.width - segmentGap * (shown - 1)) / shown;
+            for (int i = 0; i < progressSegments.Length; i++)
+            {
+                var segment = progressSegments[i];
+                segment.gameObject.SetActive(i < shown);
+                if (i >= shown)
+                {
+                    continue;
+                }
+
+                var rect = segment.rectTransform;
+                rect.anchorMin = new Vector2(0f, 0f);
+                rect.anchorMax = new Vector2(0f, 1f);
+                rect.pivot = new Vector2(0f, 0.5f);
+                rect.sizeDelta = new Vector2(width, 0f);
+                rect.anchoredPosition = new Vector2(i * (width + segmentGap), 0f);
+                segment.color = i < done ? segmentDone : segmentTodo;
+            }
         }
 
         // Keeps disabled answers soft instead of the default grey.
-        private static void SetButtonAlpha(Button button, float alpha)
+        private static void SetAlpha(Button button, float alpha)
         {
             var group = button.GetComponent<CanvasGroup>();
             if (group == null)

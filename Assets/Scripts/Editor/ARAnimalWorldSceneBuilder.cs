@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -12,23 +13,19 @@ using Image = UnityEngine.UI.Image;
 namespace ARAnimalWorld.EditorTools
 {
     // Menu: AR Animal World > Bangun Game di Scene Ini
-    // Builds the whole game into the open scene: managers, the six UI
-    // screens, the 3D preview stage, and wires any Vuforia Image Targets
-    // already in the scene to the right animal. Safe to run again; it
-    // replaces what it built before.
+    // Builds the whole game into the open scene, following the UI mockups:
+    // managers, the screens, and wires any Vuforia Image Targets already in
+    // the scene to the right animal. Safe to run again; it replaces what it
+    // built before.
     public static class ARAnimalWorldSceneBuilder
     {
         private const string ManagersName = "AR Animal World";
         private const string CanvasName = "AR Animal World UI";
-        private const string PreviewName = "AR Animal World Preview";
+        private const string OldPreviewName = "AR Animal World Preview";
 
-        private static readonly Vector2 Top = new Vector2(0.5f, 1f);
-        private static readonly Vector2 Bottom = new Vector2(0.5f, 0f);
-        private static readonly Vector2 Middle = new Vector2(0.5f, 0.5f);
-        private static readonly Vector2 TopLeft = new Vector2(0f, 1f);
-        private static readonly Vector2 TopRight = new Vector2(1f, 1f);
-
-        private static Sprite[] icons;
+        private static Sprite chevronLeft, chevronRight, starOn, starOff, starOutline, play, camera,
+            cameraOff, speaker, check, arrowUp, cloud, corner, happyLion;
+        private static Sprite[] animals;
 
         [MenuItem("AR Animal World/Bangun Game di Scene Ini", priority = 0)]
         public static void BuildGame()
@@ -41,25 +38,24 @@ namespace ARAnimalWorld.EditorTools
                 return;
             }
 
-            GeneratedArt.CreateShapes();
-            icons = GeneratedArt.RenderAnimalIcons();
+            LoadArt();
 
             DestroyExisting(ManagersName);
             DestroyExisting(CanvasName);
-            DestroyExisting(PreviewName);
+            DestroyExisting(OldPreviewName);
 
             var flow = BuildManagers();
-            flow.animalPreview = BuildPreviewStage(out var previewImageHolder);
             EnsureEventSystem();
             EnsureCamera();
+            EnsureLight();
 
             var canvas = BuildCanvas();
             var screens = new List<UIScreen>
             {
-                BuildMainMenu(canvas, flow),
+                BuildMainMenu(canvas),
                 BuildAnimalMenu(canvas),
                 BuildScan(canvas),
-                BuildDetail(canvas, flow),
+                BuildDetail(canvas),
                 BuildQuiz(canvas),
                 BuildResults(canvas)
             };
@@ -69,6 +65,7 @@ namespace ARAnimalWorld.EditorTools
             flow.router = router;
 
             int wired = WireVuforia(flow.appManager);
+            int models = AnimalModelImporter.CountReadyModels();
 
             var scene = EditorSceneManager.GetActiveScene();
             EditorSceneManager.MarkSceneDirty(scene);
@@ -76,9 +73,12 @@ namespace ARAnimalWorld.EditorTools
 
             string vuforiaNote = wired > 0
                 ? $"{wired} Image Target terhubung ke hewan."
-                : "Belum ada Vuforia Image Target di scene. Tambahkan ARCamera dan Image Target (lihat docs/Panduan-Build-APK.md), lalu jalankan menu ini lagi untuk menghubungkannya.";
+                : "Belum ada Vuforia Image Target di scene. Tambahkan AR Camera dan Image Target (lihat docs/Panduan-Build-APK.md), lalu jalankan menu ini lagi.";
+            string modelNote = models == AnimalCatalog.Animals.Count
+                ? "Semua hewan memakai model 3D asli."
+                : $"{models} dari {AnimalCatalog.Animals.Count} hewan memakai model 3D asli; sisanya model sederhana. Lihat menu AR Animal World > Siapkan Model Hewan 3D.";
             EditorUtility.DisplayDialog("AR Animal World siap",
-                "Semua layar sudah dibuat. Tekan Play untuk mencoba, lalu simpan scene (Ctrl+S).\n\n" + vuforiaNote,
+                "Semua layar sudah dibuat. Tekan Play untuk mencoba, lalu simpan scene (Ctrl+S).\n\n" + vuforiaNote + "\n\n" + modelNote,
                 "Mantap");
         }
 
@@ -88,6 +88,51 @@ namespace ARAnimalWorld.EditorTools
             PlayerPrefs.DeleteKey("araw_stars_total");
             PlayerPrefs.Save();
             Debug.Log("Bintang tersimpan sudah dihapus.");
+        }
+
+        private static void LoadArt()
+        {
+            GeneratedArt.CreateShapes();
+            BoldFont = FontAssets.Get("Fredoka-Bold");
+            MediumFont = FontAssets.Get("Fredoka-Medium");
+
+            chevronLeft = GeneratedArt.Ui("chevron_left");
+            chevronRight = GeneratedArt.Ui("chevron_right");
+            starOn = GeneratedArt.Ui("star_on");
+            starOff = GeneratedArt.Ui("star_off");
+            starOutline = GeneratedArt.Ui("star_outline");
+            play = GeneratedArt.Ui("play");
+            camera = GeneratedArt.Ui("camera");
+            cameraOff = GeneratedArt.Ui("camera_off");
+            speaker = GeneratedArt.Ui("speaker");
+            check = GeneratedArt.Ui("check");
+            arrowUp = GeneratedArt.Ui("arrow_up");
+            cloud = GeneratedArt.Ui("cloud");
+            corner = GeneratedArt.Ui("scan_corner");
+            happyLion = GeneratedArt.Ui("lion_happy");
+
+            // Same order as AnimalCatalog.Animals.
+            animals = new Sprite[AnimalCatalog.Animals.Count];
+            for (int i = 0; i < animals.Length; i++)
+            {
+                animals[i] = GeneratedArt.Ui(ArtName(AnimalCatalog.Animals[i].id));
+            }
+        }
+
+        private static string ArtName(AnimalId id)
+        {
+            switch (id)
+            {
+                case AnimalId.Lion: return "lion";
+                case AnimalId.Elephant: return "elephant";
+                default: return "rabbit";
+            }
+        }
+
+        private static Sprite Art(AnimalId id)
+        {
+            int index = AnimalCatalog.Animals.FindIndex(a => a.id == id);
+            return index >= 0 ? animals[index] : null;
         }
 
         private static void DestroyExisting(string name)
@@ -109,41 +154,17 @@ namespace ARAnimalWorld.EditorTools
             quiz.appManager = app;
             go.AddComponent<AudioSource>();
             var audio = go.AddComponent<GameAudio>();
+            var art = go.AddComponent<AnimalArt>();
+            art.illustrations = animals;
+            art.happyMascot = happyLion;
+            art.starOn = starOn;
+            art.starOff = starOff;
             var flow = go.AddComponent<GameFlow>();
             flow.appManager = app;
             flow.quizManager = quiz;
             flow.gameAudio = audio;
+            flow.art = art;
             return flow;
-        }
-
-        private static AnimalPreview BuildPreviewStage(out GameObject holder)
-        {
-            // Far below the AR scene, and only active on the detail screen.
-            holder = new GameObject(PreviewName);
-            holder.transform.position = new Vector3(0f, -500f, 0f);
-
-            var spawn = new GameObject("SpawnPoint").transform;
-            spawn.SetParent(holder.transform, false);
-            spawn.localRotation = Quaternion.Euler(0f, -25f, 0f);
-
-            var camGo = new GameObject("PreviewCamera");
-            camGo.transform.SetParent(holder.transform, false);
-            var cam = camGo.AddComponent<Camera>();
-            GeneratedArt.ConfigurePreviewCamera(cam);
-            cam.depth = -10f;
-
-            var lightGo = new GameObject("PreviewLight");
-            lightGo.transform.SetParent(holder.transform, false);
-            lightGo.transform.rotation = Quaternion.Euler(40f, -30f, 0f);
-            var light = lightGo.AddComponent<Light>();
-            light.type = LightType.Directional;
-            light.intensity = 0.6f;
-
-            var preview = holder.AddComponent<AnimalPreview>();
-            preview.previewCamera = cam;
-            preview.spawnPoint = spawn;
-            holder.SetActive(false);
-            return preview;
         }
 
         private static void EnsureEventSystem()
@@ -163,13 +184,28 @@ namespace ARAnimalWorld.EditorTools
                 camGo.tag = "MainCamera";
                 var cam = camGo.GetComponent<Camera>();
                 cam.clearFlags = CameraClearFlags.SolidColor;
-                cam.backgroundColor = SkyBlue;
+                cam.backgroundColor = Hex("#232C35");
             }
 
             if (Object.FindObjectOfType<AudioListener>() == null)
             {
                 Object.FindObjectOfType<Camera>().gameObject.AddComponent<AudioListener>();
             }
+        }
+
+        // Real animal models look flat and dark without a sun.
+        private static void EnsureLight()
+        {
+            if (Object.FindObjectsOfType<Light>().Any(l => l.type == LightType.Directional))
+            {
+                return;
+            }
+
+            var light = new GameObject("Cahaya Matahari").AddComponent<Light>();
+            light.type = LightType.Directional;
+            light.intensity = 1.1f;
+            light.shadows = LightShadows.None;
+            light.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
         }
 
         private static Transform BuildCanvas()
@@ -180,310 +216,397 @@ namespace ARAnimalWorld.EditorTools
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             var scaler = go.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1080f, 1920f);
+            scaler.referenceResolution = new Vector2(DesignWidth, DesignHeight);
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
             go.AddComponent<GraphicRaycaster>();
             return go.transform;
         }
 
-        // Full-screen panel with an optional background and a safe-area child
-        // that holds the content.
-        private static T NewScreen<T>(Transform canvas, string name, Color? background, out Transform content) where T : UIScreen
+        // Full-screen panel. Backgrounds (sky, hills) go on `screen`, which
+        // covers the whole display; content goes on `content`, which stays
+        // inside the safe area.
+        private static T NewScreen<T>(Transform canvas, string name, Color? background, out RectTransform screen, out Transform content) where T : UIScreen
         {
-            var rect = Stretch(Rect(name, canvas));
-            rect.gameObject.AddComponent<CanvasGroup>();
+            screen = Stretch(Rect(name, canvas));
+            screen.gameObject.AddComponent<CanvasGroup>();
             if (background.HasValue)
             {
-                var bg = rect.gameObject.AddComponent<Image>();
+                var bg = screen.gameObject.AddComponent<Image>();
                 bg.color = background.Value;
             }
 
-            var safe = Stretch(Rect("SafeArea", rect));
+            var safe = Stretch(Rect("SafeArea", screen));
             safe.gameObject.AddComponent<SafeAreaFitter>();
             content = safe;
-            return rect.gameObject.AddComponent<T>();
+            return screen.gameObject.AddComponent<T>();
         }
 
-        private static Button BackButton(Transform parent)
+        private static TextMeshProUGUI Title(Transform parent, string text, float x, float y, float w, float size = 52f,
+            TextAlignmentOptions align = TextAlignmentOptions.Left)
         {
-            return CircleButton("BackButton", parent, "<", White, BlueInk, TopLeft, new Vector2(110f, -110f), 140f, 80f);
-        }
-
-        private static TextMeshProUGUI Title(Transform parent, string text, float y = -110f)
-        {
-            var title = Text("Title", parent, text, 76f, BlueInk, FontStyles.Bold);
-            Place(title.rectTransform, Top, new Vector2(0f, y), new Vector2(640f, 140f));
+            var title = Text("Title", parent, text, size, Ink, true, align);
+            Put(title.rectTransform, Edge.Top, x, y, w, 80f);
             return title;
         }
 
-        private static Sprite IconFor(AnimalId id)
+        private static Image HaloIllustration(Transform parent, Edge edge, float x, float y, float size, Sprite sprite, float haloInset = 10f)
         {
-            int index = AnimalCatalog.Animals.FindIndex(a => a.id == id);
-            return icons != null && index >= 0 && index < icons.Length ? icons[index] : null;
+            Put(Dot("Halo", parent, Halo).rectTransform, edge, x + haloInset, y + haloInset, size - haloInset * 2f, size - haloInset * 2f);
+            var image = Picture("Illustration", parent, sprite);
+            Put(image.rectTransform, edge, x, y, size, size);
+            return image;
         }
 
-        // 1. Welcome / Main Menu
-        private static UIScreen BuildMainMenu(Transform canvas, GameFlow flow)
+        // A cream card with a soft blue lip and a text block.
+        private static RectTransform InfoCard(Transform parent, Edge edge, float x, float y, float w, float h, Color shadow, out Image face)
         {
-            var screen = NewScreen<MainMenuScreen>(canvas, "1 MainMenu", SkyBlue, out var c);
+            face = Raised("Card", parent, Cream, shadow, 10f, 44f, out var container);
+            Put(container, edge, x, y, w, h);
+            return (RectTransform)face.transform;
+        }
 
-            var sun = Panel("Sun", c, SunYellow, GeneratedArt.Circle);
-            Place(sun.rectTransform, TopLeft, new Vector2(140f, -150f), new Vector2(200f, 200f));
-            var grass = Panel("Grass", c.parent, FreshGreen, GeneratedArt.Rounded);
-            grass.rectTransform.SetSiblingIndex(0);
-            grass.rectTransform.anchorMin = Vector2.zero;
-            grass.rectTransform.anchorMax = new Vector2(1f, 0f);
-            grass.rectTransform.offsetMin = new Vector2(-80f, -80f);
-            grass.rectTransform.offsetMax = new Vector2(80f, 720f);
+        // 1. Beranda
+        private static UIScreen BuildMainMenu(Transform canvas)
+        {
+            var screen = NewScreen<MainMenuScreen>(canvas, "1 Beranda", Sky, out var root, out var c);
 
-            screen.starsLabel = StarBadge(c, TopRight, new Vector2(-170f, -110f));
+            Cloud(root, cloud, Edge.Top, -40f, 300f, 290f, 120f);
+            Cloud(root, cloud, Edge.Middle, 600f, 560f, 230f, 140f);
+            Hills(root, true);
 
-            var title = Text("Title", c, "AR Animal World", 112f, BlueInk, FontStyles.Bold);
-            Place(title.rectTransform, Top, new Vector2(0f, -390f), new Vector2(1000f, 160f));
-            var subtitle = Text("Subtitle", c, "Yuk, kenali dunia hewan!", 60f, TextDark);
-            Place(subtitle.rectTransform, Top, new Vector2(0f, -520f), new Vector2(1000f, 100f));
+            screen.starsLabel = StarBadge(c, starOn, 550f, 48f);
 
-            var hero = Icon("HeroLion", c, IconFor(AnimalId.Lion), Middle, new Vector2(0f, 120f), 640f);
-            hero.gameObject.AddComponent<PulseEffect>().amount = 0.03f;
+            var arFace = Raised("ARBadge", c, Yellow, YellowDark, 8f, 30f, out var arBadge);
+            Put(arBadge, Edge.Top, 68f, 180f, 154f, 100f);
+            Stretch(Text("Label", arFace.transform, "AR", 56f, Brown).rectTransform);
+            Put(Text("Title", c, "Animal World", 64f, Ink, true, TextAlignmentOptions.Left).rectTransform, Edge.Top, 245f, 182f, 500f, 92f);
+            Put(Text("Subtitle", c, "Yuk, kenali dunia hewan!", 34f, Ink, false).rectTransform, Edge.Top, 90f, 300f, 600f, 52f);
 
-            screen.startLearningButton = Button("StartLearningButton", c, "Mulai Belajar", GrassDark, White, Bottom, new Vector2(0f, 560f), new Vector2(780f, 170f), 66f);
-            screen.quizButton = Button("QuizButton", c, "Main Kuis", BlueInk, White, Bottom, new Vector2(0f, 370f), new Vector2(780f, 150f), 60f);
-            screen.scanButton = SecondaryButton("ScanButton", c, "Scan Kartu", SoftOrange, Bottom, new Vector2(0f, 190f), new Vector2(780f, 140f));
+            Put(Dot("DotOrange", c, Orange).rectTransform, Edge.Middle, 668f, 460f, 32f, 32f);
+            Put(Dot("DotYellow", c, Yellow).rectTransform, Edge.Middle, 58f, 800f, 42f, 42f);
+            var hero = HaloIllustration(c, Edge.Middle, 95f, 520f, 590f, Art(AnimalId.Lion));
+            hero.gameObject.AddComponent<PulseEffect>().amount = 0.02f;
+
+            screen.startLearningButton = PillButton("StartLearningButton", c, Edge.Bottom, 48f, 1288f, 684f, 156f,
+                "Mulai Belajar", Green, GreenDark, White, play);
+            screen.quizButton = PillButton("QuizButton", c, Edge.Bottom, 48f, 1468f, 684f, 156f,
+                "Main Kuis", Yellow, YellowDark, Brown, starOutline);
             return screen;
         }
 
-        // 2. Animal Learning Menu
+        // 2. Pilih Hewan
         private static UIScreen BuildAnimalMenu(Transform canvas)
         {
-            var screen = NewScreen<AnimalMenuScreen>(canvas, "2 AnimalMenu", SkyBlue, out var c);
-            screen.backButton = BackButton(c);
-            Title(c, "Pilih Hewan");
+            var screen = NewScreen<AnimalMenuScreen>(canvas, "2 PilihHewan", Sky, out var root, out var c);
+            Cloud(root, cloud, Edge.Top, 600f, 100f, 230f, 130f);
+
+            screen.backButton = BackButton(c, chevronLeft, CreamShadow);
+            Title(c, "Pilih Hewan", 215f, 66f, 420f);
+
+            var borders = new[] { Hex("#F5BE48"), Hex("#8AC0EA"), Hex("#F49AB8") };
+            var lips = new[] { YellowDark, Hex("#5E9ACB"), Hex("#E07FA0") };
+            var circles = new[] { Hex("#FFE08A"), Hex("#CFE6F8"), Hex("#FFD6E2") };
 
             var cards = new List<AnimalCardView>();
             for (int i = 0; i < AnimalCatalog.Animals.Count; i++)
             {
                 var animal = AnimalCatalog.Animals[i];
-                var card = Panel(animal.displayName + "Card", c, White, GeneratedArt.Rounded, true);
-                Place(card.rectTransform, Top, new Vector2(0f, -470f - i * 470f), new Vector2(960f, 420f));
+                int style = i % borders.Length;
+                float y = 208f + i * 369f;
 
-                var circle = Panel("IconBackground", card.transform, animal.accentColor, GeneratedArt.Circle);
-                Place(circle.rectTransform, new Vector2(0f, 0.5f), new Vector2(200f, 0f), new Vector2(320f, 320f));
-                Icon("Icon", card.transform, IconFor(animal.id), new Vector2(0f, 0.5f), new Vector2(200f, 10f), 330f);
+                var border = Raised(animal.displayName + "Card", c, borders[style], lips[style], 14f, 44f, out var container);
+                Put(container, Edge.Top, 48f, y, 684f, 345f);
+                var cardButton = MakeButton(container.gameObject, border);
+                var face = Round("Inner", border.transform, Cream, 40f);
+                Stretch(face.rectTransform, 6f, 6f, 6f, 6f);
 
-                var name = Text("Name", card.transform, animal.displayName, 84f, TextDark, FontStyles.Bold, TextAlignmentOptions.Left);
-                Place(name.rectTransform, new Vector2(0f, 0.5f), new Vector2(660f, 90f), new Vector2(520f, 120f));
+                var faceRect = face.rectTransform;
+                Local(Dot("IconCircle", faceRect, circles[style]).rectTransform, 34f, 34f, 256f, 256f);
+                var icon = Picture("Icon", faceRect, Art(animal.id));
+                Local(icon.rectTransform, 44f, 44f, 236f, 236f);
 
-                var learn = Button("LearnButton", card.transform, "Belajar", GrassDark, White, new Vector2(0f, 0.5f), new Vector2(535f, -80f), new Vector2(250f, 130f), 50f);
-                var scan = Button("ScanButton", card.transform, "Scan AR", BlueInk, White, new Vector2(0f, 0.5f), new Vector2(800f, -80f), new Vector2(250f, 130f), 50f);
+                var name = Text("Name", faceRect, animal.displayName, 60f, Brown, true, TextAlignmentOptions.Left);
+                Local(name.rectTransform, 322f, 100f, 230f, 120f);
 
-                cards.Add(new AnimalCardView { animalId = animal.id, learnButton = learn, scanButton = scan, nameLabel = name });
+                var open = Raised("OpenButton", faceRect, Green, GreenDark, 6f, 48f, out var openContainer);
+                open.sprite = GeneratedArt.Circle;
+                open.type = Image.Type.Simple;
+                var openLip = openContainer.GetChild(0).GetComponent<Image>();
+                openLip.sprite = GeneratedArt.Circle;
+                openLip.type = Image.Type.Simple;
+                Local(openContainer, 552f, 112f, 96f, 102f);
+                Stretch(Picture("Chevron", open.transform, chevronRight).rectTransform, 30f, 30f, 26f, 26f);
+                var openButton = MakeButton(openContainer.gameObject, open);
+
+                cards.Add(new AnimalCardView
+                {
+                    animalId = animal.id,
+                    cardButton = cardButton,
+                    openButton = openButton,
+                    nameLabel = name,
+                    icon = icon
+                });
             }
-
             screen.cards = cards.ToArray();
+
+            screen.scanButton = PillButton("ScanButton", c, Edge.Bottom, 48f, 1468f, 684f, 156f,
+                "Pindai Kartu AR", Orange, OrangeDark, Brown, camera, 42f);
             return screen;
         }
 
-        // 3. AR Camera / Scan Screen (transparent so the camera shows through)
+        // 3. Scan AR (3a searching, 3b found, 3c camera off)
         private static UIScreen BuildScan(Transform canvas)
         {
-            var screen = NewScreen<ScanScreen>(canvas, "3 Scan", null, out var c);
-            screen.backButton = BackButton(c);
+            // No background: the AR camera shows through.
+            var screen = NewScreen<ScanScreen>(canvas, "3 ScanAR", null, out var root, out var c);
+            var darkLip = Hex("#161C22");
 
-            var banner = Panel("GuideBanner", c, White, GeneratedArt.Rounded, true);
-            Place(banner.rectTransform, Top, new Vector2(70f, -110f), new Vector2(780f, 150f));
-            screen.guideText = Text("GuideText", banner.transform, "Arahkan kamera ke kartu hewan!", 48f, BlueInk, FontStyles.Bold);
-            Stretch(screen.guideText.rectTransform, 30f, 30f, 10f, 10f);
+            // 3a: guide bubble, scan frame, hint card.
+            var guide = Raised("GuidePanel", c, Cream, darkLip, 8f, 50f, out var guideContainer);
+            Put(guideContainer, Edge.Top, 184f, 48f, 548f, 145f);
+            Stretch(Text("Text", guide.transform, "Arahkan kamera ke kartu hewan!", 38f, Brown).rectTransform, 30f, 30f, 8f, 8f);
+            screen.guidePanel = guideContainer.gameObject;
 
-            var frame = Panel("ScanFrame", c, White, GeneratedArt.Frame);
-            Place(frame.rectTransform, Middle, new Vector2(0f, 60f), new Vector2(760f, 760f));
-            frame.raycastTarget = false;
-            frame.gameObject.AddComponent<PulseEffect>();
-            var hints = Rect("CardHints", frame.transform);
-            Place(hints, Bottom, new Vector2(0f, -110f), new Vector2(600f, 160f));
-            for (int i = 0; i < AnimalCatalog.Animals.Count; i++)
+            var frame = Rect("ScanFrame", c);
+            Put(frame, Edge.Middle, 130f, 400f, 520f, 680f);
+            float[] rotations = { 0f, -90f, 90f, 180f };
+            Vector2[] anchors = { new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 0f), new Vector2(1f, 0f) };
+            for (int i = 0; i < 4; i++)
             {
-                var hintCard = Panel("Hint" + AnimalCatalog.Animals[i].displayName, hints, new Color(1f, 1f, 1f, 0.85f), GeneratedArt.Rounded);
-                Place(hintCard.rectTransform, Middle, new Vector2((i - 1) * 200f, 0f), new Vector2(160f, 160f));
-                hintCard.raycastTarget = false;
-                Icon("Icon", hintCard.transform, icons[i], Middle, Vector2.zero, 140f);
+                var piece = Picture("Corner" + i, frame, corner, Yellow);
+                var r = piece.rectTransform;
+                r.anchorMin = r.anchorMax = anchors[i];
+                r.pivot = new Vector2(0.5f, 0.5f);
+                r.sizeDelta = new Vector2(112f, 112f);
+                r.anchoredPosition = new Vector2(anchors[i].x == 0f ? 56f : -56f, anchors[i].y == 0f ? 56f : -56f);
+                r.localRotation = Quaternion.Euler(0f, 0f, rotations[i]);
             }
+            var line = Round("ScanLine", frame, Yellow, 7f);
+            line.rectTransform.anchorMin = line.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+            line.rectTransform.sizeDelta = new Vector2(450f, 14f);
+            line.gameObject.AddComponent<ScanLineEffect>().travel = 230f;
             screen.scanFrame = frame.gameObject;
 
-            // Bottom info panel, shown when a card is found.
-            var info = Panel("InfoPanel", c, White, GeneratedArt.Rounded, true);
-            Place(info.rectTransform, Bottom, new Vector2(0f, 360f), new Vector2(1000f, 640f));
-            info.gameObject.AddComponent<PopInEffect>();
-            screen.infoPanel = info.gameObject;
-            screen.nameText = Text("Name", info.transform, "Singa", 84f, GrassDark, FontStyles.Bold, TextAlignmentOptions.Left);
-            Place(screen.nameText.rectTransform, Top, new Vector2(-100f, -90f), new Vector2(720f, 120f));
-            screen.factText = Text("Fact", info.transform, "", 48f, TextDark, FontStyles.Normal, TextAlignmentOptions.TopLeft);
-            Place(screen.factText.rectTransform, Top, new Vector2(-60f, -270f), new Vector2(800f, 220f));
-            screen.soundButton = CircleButton("SoundButton", info.transform, "", SunYellow, TextDark, TopRight, new Vector2(-120f, -120f), 180f, 40f);
-            SoundIcon(screen.soundButton.transform);
-            screen.learnButton = Button("LearnButton", info.transform, "Pelajari", GrassDark, White, Bottom, new Vector2(-235f, 110f), new Vector2(440f, 140f), 54f);
-            screen.quizButton = Button("QuizButton", info.transform, "Kuis", BlueInk, White, Bottom, new Vector2(235f, 110f), new Vector2(440f, 140f), 54f);
-            info.gameObject.SetActive(false);
+            var hint = Rect("CardHint", c);
+            Put(hint, Edge.Bottom, 260f, 1185f, 260f, 400f);
+            var arrow = Picture("Arrow", hint, arrowUp, Yellow);
+            Local(arrow.rectTransform, 100f, 5f, 60f, 60f);
+            var hintCard = Round("Card", hint, Cream, 28f);
+            Local(hintCard.rectTransform, 20f, 100f, 220f, 280f);
+            hintCard.rectTransform.localRotation = Quaternion.Euler(0f, 0f, -5f);
+            var hintInner = Round("Inner", hintCard.transform, Hex("#FFE08A"), 22f);
+            Stretch(hintInner.rectTransform, 22f, 22f, 22f, 22f);
+            Stretch(Picture("Lion", hintInner.transform, Art(AnimalId.Lion)).rectTransform, 12f, 12f, 40f, 40f);
+            hint.gameObject.AddComponent<PulseEffect>().amount = 0.03f;
+            screen.cardHint = hint.gameObject;
 
-            // Gentle camera problem message.
-            var message = Panel("CameraMessage", c, Cream, GeneratedArt.Rounded, true);
-            Place(message.rectTransform, Middle, new Vector2(0f, 60f), new Vector2(900f, 420f));
-            screen.cameraMessagePanel = message.gameObject;
-            screen.cameraMessageText = Text("Text", message.transform, "", 50f, TextDark);
-            Stretch(screen.cameraMessageText.rectTransform, 50f, 50f, 40f, 40f);
-            message.gameObject.SetActive(false);
+            // 3b: found badge and info panel.
+            var found = Raised("FoundBadge", c, Green, GreenDark, 8f, 46f, out var foundContainer);
+            Put(foundContainer, Edge.Top, 180f, 80f, 420f, 104f);
+            var foundRow = found.transform;
+            Local(Picture("Check", foundRow, check).rectTransform, 44f, 28f, 40f, 40f);
+            Local(Text("Text", foundRow, "Kartu ketemu!", 40f, White).rectTransform, 90f, 0f, 310f, 96f);
+            foundContainer.gameObject.AddComponent<PopInEffect>();
+            screen.foundBadge = foundContainer.gameObject;
+
+            var info = Raised("InfoPanel", c, Cream, darkLip, 10f, 44f, out var infoContainer);
+            Put(infoContainer, Edge.Bottom, 32f, 1365f, 716f, 285f);
+            infoContainer.gameObject.AddComponent<PopInEffect>();
+            screen.infoButton = MakeButton(infoContainer.gameObject, info);
+            screen.nameText = Text("Name", info.transform, "Singa", 60f, Brown, true, TextAlignmentOptions.Left);
+            Local(screen.nameText.rectTransform, 40f, 30f, 460f, 80f);
+            screen.factText = Text("Fact", info.transform, "", 34f, Brown, false, TextAlignmentOptions.TopLeft);
+            Local(screen.factText.rectTransform, 40f, 120f, 450f, 140f);
+            var sound = Raised("SoundButton", info.transform, Orange, OrangeDark, 10f, 80f, out var soundContainer);
+            sound.sprite = GeneratedArt.Circle;
+            sound.type = Image.Type.Simple;
+            var soundLip = soundContainer.GetChild(0).GetComponent<Image>();
+            soundLip.sprite = GeneratedArt.Circle;
+            soundLip.type = Image.Type.Simple;
+            Local(soundContainer, 500f, 45f, 176f, 186f);
+            Stretch(Picture("Speaker", sound.transform, speaker, Brown).rectTransform, 48f, 48f, 48f, 48f);
+            screen.soundButton = MakeButton(soundContainer.gameObject, sound);
+
+            screen.backButton = BackButton(c, chevronLeft, darkLip, Edge.Top, 48f, 64f);
 
             // Test buttons (Editor and development builds only).
-            var simulate = Panel("SimulatePanel", c, new Color(1f, 1f, 1f, 0.8f), GeneratedArt.Rounded);
-            Place(simulate.rectTransform, Top, new Vector2(0f, -300f), new Vector2(960f, 150f));
-            var simLabel = Text("Label", simulate.transform, "Tes:", 40f, TextDark, FontStyles.Bold);
-            Place(simLabel.rectTransform, new Vector2(0f, 0.5f), new Vector2(80f, 0f), new Vector2(130f, 100f));
+            var simulate = Round("SimulatePanel", c, new Color(1f, 1f, 1f, 0.85f), 30f);
+            Put(simulate.rectTransform, Edge.Top, 48f, 210f, 684f, 90f);
+            Local(Text("Label", simulate.transform, "Tes:", 30f, Brown).rectTransform, 10f, 0f, 90f, 90f);
             var simButtons = new List<Button>();
             for (int i = 0; i < AnimalCatalog.Animals.Count; i++)
             {
-                simButtons.Add(Button("Simulate" + AnimalCatalog.Animals[i].id, simulate.transform, AnimalCatalog.Animals[i].displayName,
-                    Peach, White, new Vector2(0f, 0.5f), new Vector2(285f + i * 255f, 0f), new Vector2(235f, 110f), 42f));
+                var face = Round("Simulate" + AnimalCatalog.Animals[i].id, simulate.transform, Orange, 30f);
+                Local(face.rectTransform, 105f + i * 190f, 12f, 175f, 66f);
+                Stretch(Text("Label", face.transform, AnimalCatalog.Animals[i].displayName, 30f, Brown).rectTransform);
+                simButtons.Add(MakeButton(face.gameObject, face));
             }
             screen.simulatePanel = simulate.gameObject;
             screen.simulateButtons = simButtons.ToArray();
+
+            // 3c: camera off, covers everything else.
+            var panel = Rect("CameraPanel", root);
+            Stretch(panel);
+            panel.gameObject.AddComponent<Image>().color = Sky;
+            var pc = Stretch(Rect("SafeArea", panel));
+            pc.gameObject.AddComponent<SafeAreaFitter>();
+            Put(Dot("Circle", pc, Cream).rectTransform, Edge.Middle, 190f, 365f, 400f, 400f);
+            Put(Picture("CameraOff", pc, cameraOff).rectTransform, Edge.Middle, 290f, 465f, 200f, 200f);
+            screen.cameraTitle = Text("Title", pc, "Kameranya belum menyala", 58f, Ink);
+            Put(screen.cameraTitle.rectTransform, Edge.Middle, 60f, 805f, 660f, 160f);
+            screen.cameraMessage = Text("Message", pc, "Ayo izinkan kamera supaya hewan bisa muncul!", 34f, Ink, false);
+            Put(screen.cameraMessage.rectTransform, Edge.Middle, 90f, 1000f, 600f, 120f);
+            screen.allowCameraButton = PillButton("AllowCameraButton", pc, Edge.Bottom, 48f, 1320f, 684f, 156f,
+                "Izinkan Kamera", Green, GreenDark, White);
+            screen.cameraBackButton = PillButton("CameraBackButton", pc, Edge.Bottom, 48f, 1497f, 684f, 136f,
+                "Kembali", Cream, CreamShadow, Brown, null, 38f, 10f);
+            BackButton(pc, chevronLeft, CreamShadow).onClick.AddListener(() => { });
+            screen.cameraPanel = panel.gameObject;
+            panel.gameObject.SetActive(false);
+
+            guideContainer.SetAsLastSibling();
             return screen;
         }
 
-        // 4. Animal Detail / Learning Screen
-        private static UIScreen BuildDetail(Transform canvas, GameFlow flow)
+        // 4. Detail Hewan
+        private static UIScreen BuildDetail(Transform canvas)
         {
-            var screen = NewScreen<AnimalDetailScreen>(canvas, "4 AnimalDetail", SkyBlue, out var c);
-            screen.backButton = BackButton(c);
-            screen.nameText = Title(c, "Singa");
+            var screen = NewScreen<AnimalDetailScreen>(canvas, "4 DetailHewan", Sky, out var root, out var c);
+            Hills(root, false);
 
-            var stageCard = Panel("PreviewCard", c, Peach, GeneratedArt.Rounded);
-            Place(stageCard.rectTransform, Top, new Vector2(0f, -620f), new Vector2(900f, 760f));
-            screen.accentBackground = stageCard;
+            screen.backButton = BackButton(c, chevronLeft, CreamShadow);
+            screen.illustration = HaloIllustration(c, Edge.Top, 125f, 180f, 530f, Art(AnimalId.Lion));
+            screen.illustration.gameObject.AddComponent<PopInEffect>();
 
-            var raw = Rect("Preview", stageCard.transform).gameObject.AddComponent<RawImage>();
-            Stretch(raw.rectTransform);
-            raw.raycastTarget = false;
-            flow.animalPreview.target = raw;
+            var card = InfoCard(c, Edge.Top, 48f, 740f, 684f, 315f, CreamShadow, out _);
+            screen.nameText = Text("Name", card, "Singa", 66f, Brown);
+            Local(screen.nameText.rectTransform, 40f, 36f, 604f, 90f);
+            screen.factText = Text("Fact", card, "", 36f, Brown, false);
+            Local(screen.factText.rectTransform, 50f, 140f, 584f, 140f);
 
-            screen.factText = Text("Fact", c, "", 54f, TextDark, FontStyles.Bold);
-            Place(screen.factText.rectTransform, Top, new Vector2(0f, -1100f), new Vector2(960f, 170f));
-
-            var bubble = Panel("NarrationBubble", c, Cream, GeneratedArt.Rounded, true);
-            Place(bubble.rectTransform, Top, new Vector2(0f, -1290f), new Vector2(960f, 180f));
-            screen.narrationText = Text("Narration", bubble.transform, "", 42f, BlueInk, FontStyles.Italic);
-            Stretch(screen.narrationText.rectTransform, 40f, 40f, 15f, 15f);
-
-            screen.listenButton = Button("ListenButton", c, "Dengarkan Suara", SunYellow, TextDark, Bottom, new Vector2(0f, 460f), new Vector2(960f, 150f), 58f);
-            screen.scanButton = Button("ScanButton", c, "Scan Kartu", BlueInk, White, Bottom, new Vector2(-245f, 285f), new Vector2(470f, 140f), 52f);
-            screen.quizButton = Button("QuizButton", c, "Kuis", GrassDark, White, Bottom, new Vector2(245f, 285f), new Vector2(470f, 140f), 52f);
-            screen.otherAnimalButton = SecondaryButton("OtherAnimalButton", c, "Coba Hewan Lain", BlueInk, Bottom, new Vector2(0f, 120f), new Vector2(960f, 130f), 50f);
+            screen.listenButton = PillButton("ListenButton", c, Edge.Bottom, 48f, 1308f, 684f, 156f,
+                "Dengarkan Suara", Orange, OrangeDark, Brown, speaker);
+            screen.otherAnimalButton = PillButton("OtherAnimalButton", c, Edge.Bottom, 48f, 1485f, 684f, 136f,
+                "Coba Hewan Lain", Green, GreenDark, White, null, 40f, 10f);
             return screen;
         }
 
-        // 5. Quiz Screen
+        // 5. Tebak Hewan
         private static UIScreen BuildQuiz(Transform canvas)
         {
-            var screen = NewScreen<QuizScreen>(canvas, "5 Quiz", SkyBlue, out var c);
-            screen.backButton = BackButton(c);
-            Title(c, "Tebak Hewan!");
-            screen.starsText = StarBadge(c, TopRight, new Vector2(-170f, -110f));
+            var screen = NewScreen<QuizScreen>(canvas, "5 TebakHewan", Sky, out var root, out var c);
 
-            screen.progressText = Text("Progress", c, "Soal 1 dari 3", 44f, TextDark);
-            Place(screen.progressText.rectTransform, Top, new Vector2(0f, -260f), new Vector2(600f, 70f));
-            var dots = new List<Image>();
-            for (int i = 0; i < 5; i++)
+            screen.backButton = BackButton(c, chevronLeft, CreamShadow, Edge.Top, 40f, 48f);
+            Title(c, "Tebak Hewan!", 180f, 64f, 400f, 50f, TextAlignmentOptions.Center);
+            screen.starsText = StarBadge(c, starOn, 602f, 52f, 138f, 100f);
+
+            var bar = Rect("Progress", c);
+            Put(bar, Edge.Top, 48f, 192f, 684f, 24f);
+            var segments = new List<Image>();
+            for (int i = 0; i < 6; i++)
             {
-                var dot = Panel("Dot" + (i + 1), c, SoftGray, GeneratedArt.Circle);
-                Place(dot.rectTransform, Top, new Vector2((i - 1) * 80f, -335f), new Vector2(50f, 50f));
-                dots.Add(dot);
+                segments.Add(Round("Segment" + (i + 1), bar, PaleBlue, 12f));
             }
-            screen.progressDots = dots.ToArray();
+            screen.progressSegments = segments.ToArray();
 
-            var clue = Panel("Clue", c, SunYellow, GeneratedArt.Circle, true);
-            Place(clue.rectTransform, Top, new Vector2(0f, -600f), new Vector2(380f, 380f));
-            clue.gameObject.AddComponent<PulseEffect>().amount = 0.04f;
-            var mark = Text("QuestionMark", clue.transform, "?", 260f, White, FontStyles.Bold);
-            Stretch(mark.rectTransform);
+            var question = InfoCard(c, Edge.Top, 40f, 248f, 700f, 265f, CreamShadow, out _);
+            screen.clueImage = Picture("Clue", question, Art(AnimalId.Elephant));
+            Local(screen.clueImage.rectTransform, 30f, 30f, 210f, 200f);
+            screen.questionText = Text("Question", question, "", 42f, Brown, true, TextAlignmentOptions.Left);
+            Local(screen.questionText.rectTransform, 262f, 20f, 410f, 215f);
 
-            screen.questionText = Text("Question", c, "", 64f, TextDark, FontStyles.Bold);
-            Place(screen.questionText.rectTransform, Top, new Vector2(0f, -930f), new Vector2(980f, 220f));
-
-            var answerColors = new[] { Peach, Hex("#8CC3F2"), FreshGreen };
             screen.answerButtons = new Button[3];
+            screen.answerBorders = new Image[3];
             screen.answerLabels = new TMP_Text[3];
             screen.answerIcons = new Image[3];
             for (int i = 0; i < 3; i++)
             {
-                var button = Button("Answer" + (i + 1), c, null, White, TextDark, Bottom, new Vector2((i - 1) * 340f, 520f), new Vector2(310f, 400f));
-                var strip = Panel("Color", button.transform, answerColors[i], GeneratedArt.Rounded);
-                Place(strip.rectTransform, Top, new Vector2(0f, -130f), new Vector2(270f, 230f));
-                strip.raycastTarget = false;
-                screen.answerIcons[i] = Icon("Icon", button.transform, null, Top, new Vector2(0f, -130f), 240f);
-                var label = Text("Label", button.transform, "", 54f, TextDark, FontStyles.Bold);
-                Place(label.rectTransform, Bottom, new Vector2(0f, 70f), new Vector2(290f, 100f));
-                screen.answerButtons[i] = button;
+                var border = Raised("Answer" + (i + 1), c, Hex("#F5BE48"), YellowDark, 12f, 40f, out var container);
+                Put(container, Edge.Top, 40f + i * 242f, 537f, 217f, 310f);
+                var inner = Round("Inner", border.transform, Cream, 34f);
+                Stretch(inner.rectTransform, 7f, 7f, 7f, 7f);
+                var icon = Picture("Icon", inner.transform, null);
+                Local(icon.rectTransform, 24f, 26f, 155f, 150f);
+                var label = Text("Label", inner.transform, "", 38f, Brown);
+                Local(label.rectTransform, 6f, 190f, 191f, 80f);
+                screen.answerButtons[i] = MakeButton(container.gameObject, border);
+                screen.answerBorders[i] = border;
                 screen.answerLabels[i] = label;
+                screen.answerIcons[i] = icon;
             }
-            screen.animalIcons = icons;
 
-            screen.feedbackText = Text("Feedback", c, "", 80f, GrassDark, FontStyles.Bold);
-            Place(screen.feedbackText.rectTransform, Bottom, new Vector2(0f, 220f), new Vector2(980f, 140f));
-            screen.feedbackText.gameObject.AddComponent<PopInEffect>();
+            screen.feedbackPanel = Round("Feedback", c, PaleBlue, 40f);
+            Put(screen.feedbackPanel.rectTransform, Edge.Top, 40f, 868f, 700f, 150f);
+            screen.feedbackPanel.gameObject.AddComponent<PopInEffect>();
+            screen.feedbackText = Text("Text", screen.feedbackPanel.transform, "Pilih satu jawaban ya!", 44f, Ink);
+            Stretch(screen.feedbackText.rectTransform, 20f, 20f, 10f, 10f);
+
+            var replay = Text("ReplayLink", c, "<u>Ulangi contoh</u>", 34f, Ink);
+            replay.raycastTarget = true;
+            Put(replay.rectTransform, Edge.Bottom, 200f, 1400f, 380f, 70f);
+            screen.replayButton = replay.gameObject.AddComponent<Button>();
+            screen.replayButton.transition = Selectable.Transition.None;
+
+            var next = PillButton("NextButton", c, Edge.Bottom, 40f, 1497f, 700f, 156f,
+                "Lanjut", Hex("#D6D0C0"), Hex("#BAB2A0"), Hex("#5C5546"), null, 46f);
+            screen.nextButton = next;
+            var nextContainer = next.transform;
+            screen.nextShadow = nextContainer.GetChild(0).GetComponent<Image>();
+            screen.nextFace = nextContainer.GetChild(1).GetComponent<Image>();
+            screen.nextLabel = screen.nextFace.GetComponentInChildren<TMP_Text>();
             return screen;
         }
 
-        // 6. Quiz Results Screen
+        // 6. Hasil Kuis
         private static UIScreen BuildResults(Transform canvas)
         {
-            var screen = NewScreen<ResultsScreen>(canvas, "6 Results", Cream, out var c);
+            var screen = NewScreen<ResultsScreen>(canvas, "6 HasilKuis", Sky, out var root, out var c);
+            Hills(root, false);
 
-            for (int i = 0; i < 8; i++)
+            // Confetti pieces: (x, y, w, h, rotation, colour)
+            var confetti = new (float x, float y, float w, float h, float rot, string color)[]
             {
-                // Soft confetti dots.
-                var confetti = Panel("Confetti" + i, c, i % 2 == 0 ? SunYellow : Hex("#8CC3F2"), GeneratedArt.Circle);
-                float x = -440f + i * 125f;
-                float y = -200f - (i % 3) * 90f;
-                Place(confetti.rectTransform, Top, new Vector2(x, y), new Vector2(40f + (i % 3) * 14f, 40f + (i % 3) * 14f));
-                confetti.raycastTarget = false;
+                (60f, 118f, 34f, 56f, -30f, "#F59B3A"), (240f, 72f, 26f, 26f, 0f, "#1B7F3B"),
+                (620f, 88f, 28f, 28f, 0f, "#F49AB8"), (410f, 138f, 26f, 40f, 30f, "#FFC93C"),
+                (138f, 298f, 26f, 50f, -20f, "#F49AB8"), (692f, 262f, 32f, 50f, 40f, "#8B5CE0"),
+                (28f, 400f, 24f, 24f, 0f, "#FFC93C"), (658f, 520f, 30f, 30f, 0f, "#F59B3A"),
+                (38f, 660f, 30f, 50f, 35f, "#1B7F3B"), (708f, 760f, 26f, 26f, 0f, "#8B5CE0"),
+            };
+            foreach (var piece in confetti)
+            {
+                bool round = Mathf.Approximately(piece.w, piece.h);
+                var image = round ? Dot("Confetti", c, Hex(piece.color)) : Round("Confetti", c, Hex(piece.color), piece.w / 2f);
+                Put(image.rectTransform, Edge.Top, piece.x, piece.y, piece.w, piece.h);
+                image.rectTransform.localRotation = Quaternion.Euler(0f, 0f, piece.rot);
             }
 
-            screen.titleText = Text("Title", c, "Kamu Hebat!", 116f, GrassDark, FontStyles.Bold);
-            Place(screen.titleText.rectTransform, Top, new Vector2(0f, -400f), new Vector2(1000f, 170f));
+            Put(Text("Title", c, "Kamu Hebat!", 76f, Ink).rectTransform, Edge.Top, 60f, 128f, 660f, 110f);
 
-            var mascot = Icon("Mascot", c, IconFor(AnimalId.Lion), Middle, new Vector2(0f, 200f), 480f);
-            mascot.gameObject.AddComponent<PulseEffect>().amount = 0.04f;
-
-            var stars = new List<Image>();
-            for (int i = 0; i < 5; i++)
+            screen.stars = new Image[3];
+            var starBoxes = new[] { (110f, 350f, 145f), (290f, 280f, 200f), (525f, 350f, 145f) };
+            for (int i = 0; i < 3; i++)
             {
-                var star = Icon("Star" + (i + 1), c, GeneratedArt.Star, Middle, new Vector2((i - 1) * 250f, -170f), 220f);
-                star.color = SunYellow;
+                var star = Picture("Star" + (i + 1), c, starOn);
+                Put(star.rectTransform, Edge.Top, starBoxes[i].Item1, starBoxes[i].Item2, starBoxes[i].Item3, starBoxes[i].Item3);
                 star.gameObject.AddComponent<PopInEffect>();
-                stars.Add(star);
+                screen.stars[i] = star;
             }
-            screen.stars = stars.ToArray();
 
-            screen.messageText = Text("Message", c, "", 56f, TextDark, FontStyles.Bold);
-            Place(screen.messageText.rectTransform, Middle, new Vector2(0f, -370f), new Vector2(980f, 120f));
-            screen.totalStarsText = Text("TotalStars", c, "", 44f, BlueInk);
-            Place(screen.totalStarsText.rectTransform, Middle, new Vector2(0f, -470f), new Vector2(980f, 80f));
+            var mascot = Picture("Mascot", c, happyLion);
+            Put(mascot.rectTransform, Edge.Middle, 180f, 512f, 420f, 420f);
+            mascot.gameObject.AddComponent<PulseEffect>().amount = 0.03f;
 
-            screen.playAgainButton = Button("PlayAgainButton", c, "Main Lagi", GrassDark, White, Bottom, new Vector2(0f, 330f), new Vector2(780f, 170f), 66f);
-            screen.homeButton = SecondaryButton("HomeButton", c, "Kembali ke Beranda", BlueInk, Bottom, new Vector2(0f, 140f), new Vector2(780f, 140f), 52f);
+            var card = InfoCard(c, Edge.Middle, 48f, 942f, 684f, 268f, CreamShadow, out _);
+            screen.headlineText = Text("Headline", card, "3 Bintang!", 54f, Brown);
+            Local(screen.headlineText.rectTransform, 30f, 30f, 624f, 80f);
+            screen.messageText = Text("Message", card, "", 36f, Brown, false);
+            Local(screen.messageText.rectTransform, 50f, 112f, 584f, 120f);
+
+            screen.playAgainButton = PillButton("PlayAgainButton", c, Edge.Bottom, 48f, 1313f, 684f, 156f,
+                "Main Lagi", Green, GreenDark, White);
+            screen.homeButton = PillButton("HomeButton", c, Edge.Bottom, 48f, 1485f, 684f, 136f,
+                "Kembali ke Beranda", Cream, Hex("#8CC486"), Brown, null, 38f, 10f);
             return screen;
-        }
-
-        // A simple speaker: a box, a cone and two waves made from shapes.
-        private static void SoundIcon(Transform parent)
-        {
-            var body = Panel("Speaker", parent, TextDark, GeneratedArt.Rounded);
-            Place(body.rectTransform, Middle, new Vector2(-25f, 0f), new Vector2(50f, 60f));
-            body.raycastTarget = false;
-            var wave1 = Panel("Wave1", parent, TextDark, GeneratedArt.Frame);
-            Place(wave1.rectTransform, Middle, new Vector2(25f, 0f), new Vector2(50f, 70f));
-            wave1.raycastTarget = false;
-            var wave2 = Panel("Wave2", parent, TextDark, GeneratedArt.Frame);
-            Place(wave2.rectTransform, Middle, new Vector2(40f, 0f), new Vector2(80f, 110f));
-            wave2.raycastTarget = false;
         }
 
         // Adds AnimalImageTargetHandler to each Image Target, guessing the
@@ -522,6 +645,13 @@ namespace ARAnimalWorld.EditorTools
                     Object.DestroyImmediate(defaultHandler);
                 }
 
+                // Targets wired by older versions saved a straight-on turn;
+                // a slight turn shows more of the animal.
+                if (handler.modelLocalEuler == Vector3.zero)
+                {
+                    handler.modelLocalEuler = new Vector3(0f, 30f, 0f);
+                }
+
                 handler.appManager = app;
                 EditorUtility.SetDirty(handler);
                 wired++;
@@ -529,7 +659,7 @@ namespace ARAnimalWorld.EditorTools
             return wired;
         }
 
-        private static bool TryGuessAnimal(string name, out AnimalId id)
+        public static bool TryGuessAnimal(string name, out AnimalId id)
         {
             string lower = name.ToLowerInvariant();
             if (lower.Contains("lion") || lower.Contains("singa"))

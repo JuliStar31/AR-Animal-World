@@ -5,9 +5,9 @@ using Vuforia;
 namespace ARAnimalWorld
 {
     // Attach to each Vuforia Image Target (lion, elephant, rabbit card).
-    // When the card is detected it spawns the animal model on the card,
-    // plays the animal sound followed by the narration, and tells
-    // ARAnimalWorldManager which animal is now active.
+    // While the Scan screen is open and the card is tracked, it shows the
+    // animal standing on the card, plays its sound then narration, and tells
+    // ARAnimalWorldManager which animal is in view.
     [RequireComponent(typeof(ObserverBehaviour))]
     public class AnimalImageTargetHandler : MonoBehaviour
     {
@@ -20,9 +20,11 @@ namespace ARAnimalWorld
         public AudioClip narrationClip;
 
         [Header("Placement")]
-        public Vector3 modelLocalPosition = Vector3.zero;
-        public Vector3 modelLocalEuler = Vector3.zero;
+        [Tooltip("Animal size compared to the card width. 1 = as long as the card is wide.")]
         public float modelScale = 1f;
+        public Vector3 modelLocalPosition = Vector3.zero;
+        [Tooltip("Turn the animal on the card. 0 faces the child holding the phone.")]
+        public Vector3 modelLocalEuler = new Vector3(0f, 30f, 0f);
 
         [Header("Audio")]
         public AudioSource audioSource;
@@ -33,6 +35,7 @@ namespace ARAnimalWorld
         private GameObject spawnedModel;
         private Coroutine audioRoutine;
         private bool isTracked;
+        private bool isShowing;
 
         private void Awake()
         {
@@ -51,6 +54,7 @@ namespace ARAnimalWorld
             {
                 observer.OnTargetStatusChanged += HandleTargetStatusChanged;
             }
+            ScanScreen.ScanningChanged += HandleScanningChanged;
         }
 
         private void OnDisable()
@@ -59,6 +63,7 @@ namespace ARAnimalWorld
             {
                 observer.OnTargetStatusChanged -= HandleTargetStatusChanged;
             }
+            ScanScreen.ScanningChanged -= HandleScanningChanged;
         }
 
         private void Start()
@@ -91,17 +96,28 @@ namespace ARAnimalWorld
 
         private void HandleTargetStatusChanged(ObserverBehaviour behaviour, TargetStatus targetStatus)
         {
-            bool tracked = targetStatus.Status == Status.TRACKED ||
-                           targetStatus.Status == Status.EXTENDED_TRACKED;
+            isTracked = targetStatus.Status == Status.TRACKED ||
+                        targetStatus.Status == Status.EXTENDED_TRACKED;
+            Refresh();
+        }
 
-            if (tracked == isTracked)
+        // Cards stay tracked in the background, but the animal only appears
+        // while the child is on the Scan screen.
+        private void HandleScanningChanged(bool scanning)
+        {
+            Refresh();
+        }
+
+        private void Refresh()
+        {
+            bool show = isTracked && ScanScreen.IsScanning && animal != null;
+            if (show == isShowing)
             {
                 return;
             }
 
-            isTracked = tracked;
-
-            if (tracked)
+            isShowing = show;
+            if (show)
             {
                 OnCardFound();
             }
@@ -113,11 +129,6 @@ namespace ARAnimalWorld
 
         private void OnCardFound()
         {
-            if (animal == null)
-            {
-                return;
-            }
-
             ShowModel();
 
             if (audioRoutine != null)
@@ -161,19 +172,43 @@ namespace ARAnimalWorld
                 spawnedModel = modelPrefab != null
                     ? Instantiate(modelPrefab, transform)
                     : PlaceholderAnimalFactory.Create(animalId, transform);
-                spawnedModel.transform.localPosition = modelLocalPosition;
                 spawnedModel.transform.localRotation = Quaternion.Euler(modelLocalEuler);
-                spawnedModel.transform.localScale = Vector3.one * modelScale;
+                spawnedModel.transform.localPosition = Vector3.zero;
+
+                // Size the animal to the printed card. Models come in any
+                // scale, and a model many times larger than the card puts the
+                // camera inside it, so nothing shows at all.
+                float scale = ModelFitter.Fit(spawnedModel, CardWidthInTargetSpace() * modelScale);
+                spawnedModel.transform.localPosition += modelLocalPosition;
 
                 var idle = spawnedModel.GetComponent<AnimalIdleMotion>();
                 if (idle == null)
                 {
                     idle = spawnedModel.AddComponent<AnimalIdleMotion>();
                 }
-                idle.Scale = modelScale;
+                idle.Scale = scale;
+                idle.bobHeight = 0.02f * CardWidthInTargetSpace();
             }
 
             spawnedModel.SetActive(true);
+        }
+
+        // The card's width measured in this transform's local units, whatever
+        // scale Vuforia gave the Image Target.
+        private float CardWidthInTargetSpace()
+        {
+            float widthMeters = 0f;
+            if (observer is ImageTargetBehaviour imageTarget)
+            {
+                widthMeters = imageTarget.GetSize().x;
+            }
+            if (widthMeters <= 0f)
+            {
+                widthMeters = 0.08f;
+            }
+
+            float worldPerLocal = Mathf.Max(transform.lossyScale.x, 1e-6f);
+            return widthMeters / worldPerLocal;
         }
 
         private IEnumerator PlaySoundThenNarration()
