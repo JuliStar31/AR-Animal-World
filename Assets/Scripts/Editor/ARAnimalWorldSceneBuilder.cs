@@ -7,6 +7,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using Vuforia;
 using static ARAnimalWorld.EditorTools.UIKit;
+using Image = UnityEngine.UI.Image;
 
 namespace ARAnimalWorld.EditorTools
 {
