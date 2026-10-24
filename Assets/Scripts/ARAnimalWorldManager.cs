@@ -14,6 +14,10 @@ namespace ARAnimalWorld
         public event Action<AnimalData> OnAnimalSelected;
         public event Action<int> OnStarsUpdated;
         public event Action<int> OnQuizAnswered;
+        public event Action<AnimalData> OnAnimalDetected;
+        public event Action<AnimalData> OnAnimalLost;
+
+        public bool IsAnimalInView { get; private set; }
 
         public AnimalData SelectedAnimal => AnimalCatalog.Animals.Find(a => a.id == selectedAnimalId);
 
@@ -21,6 +25,25 @@ namespace ARAnimalWorld
         {
             selectedAnimalId = animalId;
             OnAnimalSelected?.Invoke(SelectedAnimal);
+        }
+
+        // Called by AnimalImageTargetHandler when a printed card is scanned.
+        public void HandleAnimalDetected(AnimalId animalId)
+        {
+            IsAnimalInView = true;
+            SelectAnimal(animalId);
+            OnAnimalDetected?.Invoke(SelectedAnimal);
+        }
+
+        public void HandleAnimalLost(AnimalId animalId)
+        {
+            if (animalId != selectedAnimalId)
+            {
+                return;
+            }
+
+            IsAnimalInView = false;
+            OnAnimalLost?.Invoke(GetAnimalById(animalId));
         }
 
         public void AddStars(int amount)

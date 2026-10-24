@@ -34,14 +34,43 @@ For each animal card:
 - add a Vuforia Image Target
 - assign a corresponding 3D animal prefab
 - anchor the animal model on the detected target
-- add simple animation or idle movement
-after detection
+- add simple animation or idle movement after detection
 
 ## Example logic
 
 - Lion card detected -> spawn lion model
 - Elephant card detected -> spawn elephant model
 - Rabbit card detected -> spawn rabbit model
+
+## Wiring the card handler
+
+`Assets/Scripts/AR/AnimalImageTargetHandler.cs` does the detection work for each card. Requires Vuforia Engine 10 or newer (it uses `ObserverBehaviour.OnTargetStatusChanged`).
+
+1. Put one `ARAnimalWorldManager` in the scene (for example on an empty `GameManager` object).
+2. Add an Image Target for each card (lion, elephant, rabbit) under the AR Camera's scene.
+3. On each Image Target, add `AnimalImageTargetHandler` and set:
+   - **App Manager**: the `ARAnimalWorldManager` object
+   - **Animal Id**: `Lion`, `Elephant`, or `Rabbit` to match the card
+   - **Model Prefab**: the animal prefab (optional, see below)
+   - **Sound Clip**: the animal sound (optional, see below)
+   - **Narration Clip**: a recorded voice reading `narrationText` (optional)
+   - **Model Local Position / Euler / Scale**: tune so the animal sits nicely on the card
+4. Remove the `DefaultObserverEventHandler` component Vuforia adds to each Image Target. It toggles child renderers on its own and will fight with the handler.
+
+If Model Prefab or Sound Clip are left empty, the handler loads them from `Resources` using the names in `AnimalData`:
+
+| Animal | Model | Sound |
+| --- | --- | --- |
+| Lion | `Resources/Models/LionModel` | `Resources/Audio/lion_roar` |
+| Elephant | `Resources/Models/ElephantModel` | `Resources/Audio/elephant_trumpet` |
+| Rabbit | `Resources/Models/RabbitModel` | `Resources/Audio/rabbit_squeak` |
+
+### What happens at runtime
+
+- **Card found** (`TRACKED` or `EXTENDED_TRACKED`): the model is spawned as a child of the Image Target the first time and shown again on later scans. The animal sound plays, then the narration after a short pause. The handler calls `ARAnimalWorldManager.HandleAnimalDetected`, which selects that animal (so the quiz uses it) and raises `OnAnimalDetected`.
+- **Card lost**: the model is hidden, audio stops, and `ARAnimalWorldManager.HandleAnimalLost` raises `OnAnimalLost`.
+
+UI scripts can subscribe to `OnAnimalDetected` to show the fact card (`fact`) and narration subtitles (`narrationText`), and to `OnAnimalLost` to show a friendly "point the camera at the card" hint. `IsAnimalInView` tells you whether a card is currently tracked.
 
 ## Tips for child-safe AR
 
