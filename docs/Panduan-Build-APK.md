@@ -35,7 +35,7 @@ Belum ada model 3D atau suara asli? Tidak masalah. Game otomatis membuat hewan 3
 2. Di Unity Hub: **Projects > Add > Add project from disk**, pilih folder repo ini.
 3. Saat pertama dibuka, Unity akan mengimpor semua file. Tunggu sampai selesai.
 4. Buka **Window > TextMeshPro > Import TMP Essential Resources** lalu klik **Import**. Tanpa ini teks tidak muncul.
-5. Buka **Window > Package Manager**, pilih **Unity Registry**, cari **Inference Engine** (`com.unity.ai.inference`), lalu klik **Install**. Paket ini menjalankan AI pengenal gambar hewan.
+5. Buka **Window > Package Manager**, pilih **Unity Registry**, cari **Inference Engine** (`com.unity.ai.inference`, dicoba dengan versi 2.6.1), lalu klik **Install**. Paket ini menjalankan AI pengenal gambar hewan.
 
 ## 3. Pasang Vuforia dan license key
 

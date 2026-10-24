@@ -92,7 +92,7 @@ Full step-by-step guide (Indonesian): [docs/Panduan-Build-APK.md](docs/Panduan-B
 6. Press Play (the Scan screen has test buttons that fake a detected card)
 7. Build for Android (minimum Android 10 / API 29)
 
-Besides the printed cards, the Scan screen recognises any photo or realistic picture of a lion, elephant or rabbit with MobileNetV2 (ImageNet, `Assets/AI/mobilenetv2-12.onnx`) through Unity's Inference Engine package (`com.unity.ai.inference`), and shows that animal in front of the camera.
+Besides the printed cards, the Scan screen recognises any photo or realistic picture of a lion, elephant or rabbit with MobileNetV2 (ImageNet, `Assets/AI/mobilenetv2-12.onnx`) through Unity's Inference Engine package (`com.unity.ai.inference`, tested with 2.6.1), and shows that animal in front of the camera.
 
 Placeholder 3D animals and synthesized sounds are generated automatically, so the game is playable before real models and audio exist. **Siapkan Model Hewan 3D** finds a lion, elephant and rabbit in any model under `Assets` and saves them as prefabs in `Assets/Resources/Models`, turned to face the player and sized to the card. Real sounds go in `Assets/Resources/Audio`.
 

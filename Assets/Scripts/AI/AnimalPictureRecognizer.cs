@@ -171,7 +171,8 @@ namespace ARAnimalWorld
             }
 
             var image = VuforiaBehaviour.Instance.CameraDevice.GetCameraImage(format);
-            if (image == null || !image.IsValid())
+            // Vuforia 11's Image has no IsValid(); FillInput checks the pixels.
+            if (image == null)
             {
                 return;
             }
